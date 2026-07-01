@@ -299,19 +299,27 @@ Review Discovery Engine                    Music Discovery Companion
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Frontend UI                             │
 │                    (Phase 5 - React + Tailwind)                 │
+│                                                                 │
+│  ⚠️  SECURITY BOUNDARY: Frontend NEVER accesses external APIs  │
+│  ⚠️  All communication via Backend API only                    │
 └───────────────────────────┬─────────────────────────────────────┘
-                            │ HTTP/REST API
-┌───────────────────────────▼─────────────────────────────────────┐
+                            │ HTTP/REST API (ONLY)
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
 │                      Backend API                                 │
 │              (Phase 4 - FastAPI + Python)                      │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
 │  │ Auth Module │  │ Rate Limit  │  │ API Routes  │             │
 │  └─────────────┘  └─────────────┘  └─────────────┘             │
+│                                                                 │
+│  🔒 GATEWAY: All external API access happens here              │
 └───────────────────────────┬─────────────────────────────────────┘
                             │
-┌───────────────────────────▼─────────────────────────────────────┐
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
 │                    AI Orchestration Layer                       │
-│                   (Phase 3 - LangChain + Groq)                  │
+│                   (Phase 3 - Python)                            │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │           Orchestration Controller                       │   │
 │  │  - Coordinates all AI components                        │   │
@@ -320,7 +328,8 @@ Review Discovery Engine                    Music Discovery Companion
 │  └─────────────────────────────────────────────────────────┘   │
 └───────────────┬───────────────────────┬────────────────────────┘
                 │                       │
-┌───────────────▼───────────┐ ┌─────────▼─────────────────────────┐
+                ▼                       ▼
+┌──────────────────────────┐ ┌──────────────────────────────────┐
 │  AI Conversation Engine   │ │  Music Recommendation Engine      │
 │    (Phase 1)              │ │       (Phase 2)                   │
 │  ┌─────────────────────┐  │ │  ┌─────────────────────────────┐  │
@@ -334,11 +343,57 @@ Review Discovery Engine                    Music Discovery Companion
                                         │
                 ┌───────────────────────┼───────────────────────┐
                 │                       │                       │
-┌───────────────▼───────────┐ ┌─────────▼─────────┐ ┌──────────▼──────────┐
-│   Groq LLM Service       │ │  Spotify API      │ │  Review Insights    │
-│   (Llama 3.1 / Mixtral)  │ │  (Web API)        │ │  (PostgreSQL)       │
+                ▼                       ▼                       ▼
+┌───────────────────────────┐ ┌───────────────────┐ ┌─────────────────────┐
+│   Groq LLM Service       │ │  Spotify API      │ │  Review Discovery   │
+│   (Llama 3.1 / Mixtral)  │ │  (Web API)        │ │  Engine API/DB     │
+│                           │ │                   │ │  (External System)  │
+│  🔒 Backend-only access   │ │  🔒 Backend-only  │ │  🔒 Backend-only    │
 └───────────────────────────┘ └───────────────────┘ └─────────────────────┘
 ```
+
+### Communication Architecture & Security Boundaries
+
+**Critical Security Principle**: The Frontend UI (Phase 5) MUST NEVER directly access:
+- Music APIs (Spotify, Deezer, Last.fm, Jamendo)
+- Review Discovery Engine outputs or database
+- Groq LLM API
+- Any external third-party APIs
+
+**All Frontend Communication**:
+- Frontend → Backend API (Phase 4) via HTTP/REST only
+- Backend API acts as the sole gateway to all external services
+- Frontend receives only processed, sanitized responses
+- No API keys or credentials exposed to frontend
+
+**Backend API Responsibilities**:
+1. **API Gateway**: All external API calls originate from Backend API
+2. **Credential Management**: Stores and manages all API keys securely
+3. **Request Validation**: Validates and sanitizes all requests before forwarding
+4. **Response Processing**: Processes external API responses before sending to frontend
+5. **Rate Limiting**: Enforces rate limits on external API calls
+6. **Caching**: Caches external API responses to reduce calls
+7. **Error Handling**: Handles external API failures gracefully
+
+**External API Access Pattern**:
+```
+Frontend → Backend API → Phase 3 (Orchestrator) → Phase 2 (Recommendation Engine) → External APIs
+```
+
+**Data Flow Security**:
+- Frontend sends user query → Backend API
+- Backend API validates request → Orchestrator
+- Orchestrator coordinates phases → Recommendation Engine
+- Recommendation Engine calls external APIs (Spotify, Review Engine)
+- External APIs return data → Recommendation Engine processes
+- Processed data → Backend API → Frontend (sanitized response)
+
+**Why This Architecture?**
+1. **Security**: API keys never exposed to client-side code
+2. **Control**: Backend can validate, rate-limit, and cache requests
+3. **Flexibility**: Can swap external APIs without frontend changes
+4. **Monitoring**: Centralized logging of all external API calls
+5. **Cost Control**: Backend can enforce usage limits and quotas
 
 ---
 
