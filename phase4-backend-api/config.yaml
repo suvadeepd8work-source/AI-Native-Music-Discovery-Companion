@@ -1,0 +1,61 @@
+# Phase 4: Backend API Configuration
+
+# Server Configuration
+server:
+  host: "0.0.0.0"
+  port: 8005
+  log_level: "info"
+  workers: 4
+
+# Mock Mode
+use_mocks: true
+
+# API Configuration
+api:
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://localhost:8000"
+    - "http://localhost:8001"
+    - "http://localhost:8002"
+    - "http://localhost:8004"
+  rate_limit:
+    requests_per_minute: 60
+    requests_per_hour: 1000
+
+# Component Configuration
+components:
+  orchestrator:
+    enabled: true
+    timeout: 60
+  conversation_memory:
+    enabled: true
+    timeout: 10
+  recommendation_storage:
+    enabled: true
+    timeout: 10
+  response_storage:
+    enabled: true
+    timeout: 10
+
+# Logging
+logging:
+  level: "INFO"
+  format: "json"
+  file: "./logs/backend_api.log"
+  rotation: "daily"
+  retention: 30
+
+# Health Check
+health:
+  enabled: true
+  endpoint: "/health"
+  checks:
+    - orchestrator
+    - conversation_memory
+    - recommendation_storage
+    - response_storage
+
+# Metrics
+metrics:
+  enabled: true
+  endpoint: "/metrics"
