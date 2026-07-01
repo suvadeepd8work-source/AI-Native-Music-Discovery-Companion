@@ -1,0 +1,20 @@
+# Phase 3: AI Orchestration Layer Requirements
+
+# Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+
+# Configuration
+pyyaml==6.0.1
+
+# Logging
+structlog==23.2.0
+
+# Async
+asyncio==3.4.3
+
+# Dependencies from Phase 1 and Phase 2
+# These would be imported from the respective phases
+# - phase1-ai-conversation-engine
+# - phase2-music-recommendation-engine

@@ -1,0 +1,66 @@
+# Phase 3: AI Orchestration Layer Configuration
+
+# Server Configuration
+server:
+  host: "0.0.0.0"
+  port: 8004
+  log_level: "info"
+
+# Mock Mode
+use_mocks: true
+
+# API Configuration
+api:
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://localhost:8000"
+    - "http://localhost:8001"
+    - "http://localhost:8002"
+  rate_limit:
+    requests_per_minute: 60
+    requests_per_hour: 1000
+
+# Pipeline Configuration
+pipeline:
+  enable_conversation_engine: true
+  enable_conversation_memory: true
+  enable_review_insights: true
+  enable_recommendation_engine: true
+  enable_explainability_engine: true
+  enable_response_generator: true
+  
+  # Timeout settings (seconds)
+  step_timeouts:
+    conversation_engine: 10
+    conversation_memory: 5
+    review_insight_retrieval: 10
+    recommendation_generation: 30
+    explanation_generation: 10
+    response_generation: 15
+
+# Orchestration Logger Configuration
+orchestration_logger:
+  log_dir: "./data/orchestration_logs"
+  max_logs: 10000
+  auto_cleanup: true
+  cleanup_days: 30
+  enable_metrics: true
+  enable_failure_tracking: true
+
+# Logging
+logging:
+  level: "INFO"
+  format: "json"
+  file: "./logs/orchestration.log"
+  rotation: "daily"
+  retention: 30
+
+# Health Check
+health:
+  enabled: true
+  endpoint: "/health"
+
+# Metrics
+metrics:
+  enabled: true
+  endpoint: "/metrics"

@@ -1,0 +1,150 @@
+# Phase 1: AI Conversation Engine Configuration
+
+# Server Configuration
+server:
+  host: "0.0.0.0"
+  port: 8001
+  workers: 4
+  log_level: "info"
+
+# Groq LLM Configuration
+groq:
+  api_key: "${GROQ_API_KEY}"
+  primary_model: "llama-3.1-70b-versatile"
+  secondary_model: "mixtral-8x7b"
+  fallback_model: "llama-3.1-8b"
+  temperature: 0.7
+  max_tokens: 500
+  timeout: 30
+
+# Prompt Builder Configuration
+prompt_builder:
+  max_context_length: 4000
+  max_memory_items: 10
+  max_review_insights: 5
+  max_music_metadata: 3
+  enable_truncation: true
+  include_system_instruction: true
+  include_response_format: true
+
+# Response Storage Configuration
+response_storage:
+  storage_dir: "./data/responses"
+  max_responses: 1000
+  auto_cleanup: true
+  cleanup_days: 30
+
+# Database Configuration (PostgreSQL)
+database:
+  url: "${DATABASE_URL}"
+  pool_size: 10
+  max_overflow: 20
+  pool_timeout: 30
+  pool_recycle: 3600
+
+# Cache Configuration (Redis)
+cache:
+  url: "${REDIS_URL}"
+  db: 0
+  ttl:
+    short: 1800  # 30 minutes
+    medium: 604800  # 7 days
+    long: 2592000  # 30 days
+
+# Conversation Memory
+memory:
+  max_history_length: 10
+  max_context_exchanges: 50
+  storage_path: "./data/chat_history"
+  auto_save: true
+
+# Intent Recognition
+intent:
+  confidence_threshold: 0.7
+  fallback_intent: "GENERAL_CHAT"
+  supported_intents:
+    - DISCOVER_NEW_ARTISTS
+    - MOOD_BASED
+    - ACTIVITY_BASED
+    - GENRE_EXPLORATION
+    - ARTIST_EXPLORATION
+    - ESCAPE_REPETITIVE
+    - INSTRUMENTAL_MUSIC
+    - CODING_MUSIC
+    - WORKOUT_MUSIC
+    - RELAXATION_MUSIC
+    - CLARIFICATION
+    - FEEDBACK
+    - GENERAL_CHAT
+
+# Mood Detection
+mood:
+  supported_moods:
+    - energetic
+    - calm
+    - melancholic
+    - upbeat
+    - focus
+    - relaxed
+    - happy
+    - sad
+    - romantic
+    - aggressive
+
+# Listening Goals
+listening_goals:
+  supported_goals:
+    - coding
+    - workout
+    - studying
+    - relaxation
+    - sleep
+    - focus
+    - entertainment
+    - background
+    - active_listening
+    - social
+
+# Discovery Preferences
+discovery:
+  novelty_levels:
+    - familiar
+    - balanced
+    - novel
+    - experimental
+  popularity_filters:
+    - mainstream
+    - indie
+    - underground
+
+# API Configuration
+api:
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://localhost:8000"
+  rate_limit:
+    requests_per_minute: 60
+    requests_per_hour: 1000
+
+# Logging
+logging:
+  level: "INFO"
+  format: "json"
+  file: "./logs/conversation_engine.log"
+  rotation: "daily"
+  retention: 30
+
+# Health Check
+health:
+  enabled: true
+  endpoint: "/health"
+  checks:
+    - database
+    - cache
+    - groq_api
+
+# Metrics
+metrics:
+  enabled: true
+  endpoint: "/metrics"
+  port: 9091
