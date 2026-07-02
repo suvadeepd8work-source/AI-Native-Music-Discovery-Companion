@@ -163,7 +163,8 @@ class APIClient {
 
   // Similar Artists
   async getSimilarArtists(params: {
-    artist_id: string
+    artist_id?: string
+    artist_name?: string
     limit?: number
   }): Promise<SimilarArtistsResponse> {
     const queryString = new URLSearchParams(params as any).toString()

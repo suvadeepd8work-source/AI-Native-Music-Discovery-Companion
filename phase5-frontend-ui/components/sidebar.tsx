@@ -15,6 +15,7 @@ import {
   Settings,
   Menu,
   X,
+  User,
 } from "lucide-react"
 
 const navigation = [
@@ -22,6 +23,7 @@ const navigation = [
   { name: "AI Chat", href: "/chat", icon: MessageSquare },
   { name: "Music Discovery", href: "/discover", icon: Music },
   { name: "Recommendations", href: "/recommendations", icon: ListMusic },
+  { name: "Artist", href: "/artist", icon: User },
   { name: "Explanation", href: "/explain", icon: Lightbulb },
   { name: "History", href: "/history", icon: History },
   { name: "Insights", href: "/insights", icon: BarChart3 },

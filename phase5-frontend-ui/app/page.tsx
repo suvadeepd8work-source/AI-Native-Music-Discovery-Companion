@@ -1,20 +1,33 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { apiClient, HealthCheckResponse } from "@/lib/api"
-import { Music, MessageSquare, Sparkles, ListMusic } from "lucide-react"
+import { apiClient, HealthCheckResponse, RecommendationHistoryResponse } from "@/lib/api"
+import { Music, MessageSquare, Sparkles, ListMusic, Clock, TrendingUp } from "lucide-react"
+import { RecommendationCard } from "@/components/recommendation-card"
+import { PageLoading } from "@/components/loading-spinner"
 
 export default function Home() {
   const [health, setHealth] = useState<HealthCheckResponse | null>(null)
+  const [recentRecommendations, setRecentRecommendations] = useState<RecommendationHistoryResponse | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    apiClient.healthCheck().then(setHealth).finally(() => setLoading(false))
+    Promise.all([
+      apiClient.healthCheck(),
+      apiClient.getRecommendationHistory({ user_id: "user_1", limit: 4 })
+    ]).then(([healthData, recommendationsData]) => {
+      setHealth(healthData)
+      setRecentRecommendations(recommendationsData)
+    }).catch(console.error).finally(() => setLoading(false))
   }, [])
 
+  const latestTimestamp = recentRecommendations?.history?.[0]?.timestamp
+    ? new Date(recentRecommendations.history[0].timestamp).toLocaleString()
+    : null
+
   return (
-    <div className="p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-foreground mb-2">
             Welcome to AI Music Discovery
@@ -23,6 +36,8 @@ export default function Home() {
             Discover new music naturally through AI-powered conversations
           </p>
         </div>
+
+        {loading && <PageLoading />}
 
         {!loading && health && (
           <div className="mb-8 p-4 bg-card border border-border rounded-lg">
@@ -33,6 +48,36 @@ export default function Home() {
             <div className="text-sm text-muted-foreground">
               Version: {health.version}
             </div>
+          </div>
+        )}
+
+        {!loading && recentRecommendations && recentRecommendations.success && (
+          <div className="mb-8 p-6 bg-card border border-border rounded-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Recently Recommended Songs
+              </h2>
+              {latestTimestamp && (
+                <div className="text-sm text-muted-foreground">
+                  Latest: {latestTimestamp}
+                </div>
+              )}
+            </div>
+            {recentRecommendations.history && recentRecommendations.history.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {recentRecommendations.history.slice(0, 4).map((rec: any, index: number) => (
+                  <RecommendationCard
+                    key={index}
+                    track={rec.track}
+                    confidence={rec.confidence}
+                    explanation={rec.explanation}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground">No recent recommendations yet. Start discovering music!</p>
+            )}
           </div>
         )}
 
@@ -66,6 +111,24 @@ export default function Home() {
             <h3 className="text-lg font-semibold mb-2">Insights</h3>
             <p className="text-sm text-muted-foreground">
               Understand discovery patterns and trends
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors cursor-pointer">
+            <TrendingUp className="h-8 w-8 text-primary mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Discovery Insights</h3>
+            <p className="text-sm text-muted-foreground">
+              Explore pain points, theme clusters, and user segments
+            </p>
+          </div>
+
+          <div className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors cursor-pointer">
+            <MessageSquare className="h-8 w-8 text-primary mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Conversation History</h3>
+            <p className="text-sm text-muted-foreground">
+              Review your past conversations and queries
             </p>
           </div>
         </div>
