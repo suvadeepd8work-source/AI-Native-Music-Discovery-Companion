@@ -1,0 +1,43 @@
+# Testing Requirements for AI Music Discovery Companion
+
+# Core Testing Framework
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.1
+pytest-xdist>=3.3.1  # For parallel test execution
+
+# Async Support
+asyncio>=3.4.3
+aiohttp>=3.8.5
+httpx>=0.24.1
+
+# Database Testing
+pytest-postgresql>=5.0.0
+pytest-redis>=3.0.2
+
+# API Testing
+requests>=2.31.0
+responses>=0.23.1
+
+# Utilities
+python-dotenv>=1.0.0
+pyyaml>=6.0.1
+faker>=19.0.0
+
+# Code Quality
+flake8>=6.0.0
+black>=23.7.0
+isort>=5.12.0
+mypy>=1.4.1
+
+# Coverage
+coverage>=7.3.0
+
+# Performance Testing
+pytest-benchmark>=4.0.0
+
+# Reporting
+pytest-html>=3.2.0
+pytest-json-report>=1.5.0
+allure-pytest>=2.13.2
