@@ -16,11 +16,8 @@ from .schemas import (
     ActivityType,
     DiscoveryPreferenceType
 )
-from .spotify_client import SpotifyClient, MockSpotifyClient
-from .review_client import ReviewEngineClient, MockReviewEngineClient
-from .deezer_client import DeezerClient, MockDeezerClient
 from .lastfm_client import LastFMClient, MockLastFMClient
-from .jamendo_client import JamendoClient, MockJamendoClient
+from .review_client import ReviewEngineClient, MockReviewEngineClient
 from .storage import RecommendationStorage, MockRecommendationStorage
 from .explainability_engine import ExplainabilityEngine, MockExplainabilityEngine
 
@@ -144,20 +141,14 @@ class RecommendationEngine:
     
     def __init__(
         self,
-        spotify_client: SpotifyClient,
+        lastfm_client: LastFMClient,
         review_client: ReviewEngineClient,
-        deezer_client: Optional[DeezerClient] = None,
-        lastfm_client: Optional[LastFMClient] = None,
-        jamendo_client: Optional[JamendoClient] = None,
         storage: Optional[RecommendationStorage] = None,
         explainability_engine: Optional[ExplainabilityEngine] = None,
         config: Dict[str, Any] = None
     ):
-        self.spotify = spotify_client
-        self.review = review_client
-        self.deezer = deezer_client
         self.lastfm = lastfm_client
-        self.jamendo = jamendo_client
+        self.review = review_client
         self.storage = storage or RecommendationStorage()
         self.explainability = explainability_engine or ExplainabilityEngine()
         self.config = config or {}
@@ -311,27 +302,9 @@ class RecommendationEngine:
     
     async def _get_artist_metadata(self, artist_id: str) -> Artist:
         """Get artist metadata from available APIs."""
-        # Try Spotify first
-        if self.spotify:
-            artist = await self.spotify.get_artist(artist_id)
-            if artist:
-                return artist
-        
-        # Try Deezer
-        if self.deezer:
-            artist = await self.deezer.get_artist(artist_id)
-            if artist:
-                return artist
-        
-        # Try Last.fm (search by name)
+        # Try Last.fm first
         if self.lastfm:
-            artists = await self.lastfm.search_artists(artist_id, limit=1)
-            if artists:
-                return artists[0]
-        
-        # Try Jamendo
-        if self.jamendo:
-            artist = await self.jamendo.get_artist(artist_id)
+            artist = await self.lastfm.get_artist(artist_id)
             if artist:
                 return artist
         
@@ -355,23 +328,7 @@ class RecommendationEngine:
     
     async def _get_album_metadata(self, album_id: str) -> Optional[Album]:
         """Get album metadata from available APIs."""
-        # Try Spotify first
-        if self.spotify:
-            # Spotify doesn't have a direct get_album method, would need to add
-            pass
-        
-        # Try Deezer
-        if self.deezer:
-            album = await self.deezer.get_album(album_id)
-            if album:
-                return album
-        
-        # Try Jamendo
-        if self.jamendo:
-            album = await self.jamendo.get_album(album_id)
-            if album:
-                return album
-        
+        # Last.fm doesn't have direct album metadata in current implementation
         return None
     
     async def _review_based_discovery(
@@ -399,14 +356,14 @@ class RecommendationEngine:
                 if i.artist_id not in request.previously_recommended_artists
             ]
             
-            # Get Spotify data for top insights
+            # Get Last.fm data for top insights
             candidates = []
             for insight in insights[:max_results]:
-                artist = await self.spotify.get_artist(insight.artist_id)
+                artist = await self.lastfm.get_artist(insight.artist_id)
                 if artist:
                     # Get top tracks for this artist
-                    tracks = await self.spotify.search_tracks(
-                        query=f"artist:{artist.artist_name}",
+                    tracks = await self.lastfm.search_tracks(
+                        query=artist.artist_name,
                         limit=1
                     )
                     
@@ -497,13 +454,11 @@ class RecommendationEngine:
             if "speechiness" in feature_ranges:
                 search_params["max_speechiness"] = feature_ranges["speechiness"][1]
             
-            # Search tracks
-            tracks = await self.spotify.search_tracks(
-                query="",
-                seed_genres=request.preferred_genres[:2] if request.preferred_genres else None,
-                seed_artists=request.preferred_artists[:1] if request.preferred_artists else None,
-                limit=max_results * 2,
-                **search_params
+            # Search tracks using Last.fm
+            # Last.fm doesn't support audio feature filtering, so we'll do basic search
+            tracks = await self.lastfm.search_tracks(
+                query=request.preferred_genres[0] if request.preferred_genres else "",
+                limit=max_results * 2
             )
             
             # Filter out previously recommended songs
@@ -562,14 +517,19 @@ class RecommendationEngine:
             
             candidates = []
             
-            # For each preferred artist, search for similar artists
+            # For each preferred artist, search for similar artists using Last.fm
             for artist_name in request.preferred_artists[:2]:
-                # Search for similar tracks
-                tracks = await self.spotify.search_tracks(
-                    query=f"similar to {artist_name}",
-                    seed_artists=[artist_name] if artist_name else None,
-                    limit=max_results
-                )
+                # Get similar artists from Last.fm
+                similar_artists = await self.lastfm.get_similar_artists(artist_name, limit=max_results)
+                
+                # Search for tracks from similar artists
+                tracks = []
+                for similar_artist in similar_artists:
+                    artist_tracks = await self.lastfm.search_tracks(
+                        query=similar_artist.artist_name,
+                        limit=2
+                    )
+                    tracks.extend(artist_tracks)
                 
                 # Filter out previously recommended
                 tracks = [
@@ -629,10 +589,9 @@ class RecommendationEngine:
             
             # If user wants novel recommendations, prioritize less popular artists
             if request.discovery_goal == DiscoveryPreferenceType.NOVEL:
-                # Search for tracks with lower popularity
-                tracks = await self.spotify.search_tracks(
-                    query="",
-                    seed_genres=request.preferred_genres[:2] if request.preferred_genres else None,
+                # Search for tracks with lower popularity using Last.fm
+                tracks = await self.lastfm.search_tracks(
+                    query=request.preferred_genres[0] if request.preferred_genres else "",
                     limit=max_results * 3
                 )
                 
@@ -702,12 +661,11 @@ class RecommendationEngine:
             
             candidates = []
             
-            # If user has preferred genres, search for tracks in those genres
+            # If user has preferred genres, search for tracks in those genres using Last.fm
             if request.preferred_genres:
                 for genre in request.preferred_genres[:2]:
-                    tracks = await self.spotify.search_tracks(
-                        query=f"genre:{genre}",
-                        seed_genres=[genre],
+                    tracks = await self.lastfm.search_tracks(
+                        query=genre,
                         limit=max_results
                     )
                     
@@ -1288,7 +1246,7 @@ class RecommendationEngine:
     
     async def close(self) -> None:
         """Close all clients."""
-        await self.spotify.close()
+        await self.lastfm.close()
         await self.review.close()
 
 
@@ -1296,11 +1254,8 @@ class MockRecommendationEngine:
     """Mock implementation for testing."""
     
     def __init__(self):
-        self.spotify = MockSpotifyClient()
-        self.review = MockReviewEngineClient()
-        self.deezer = MockDeezerClient()
         self.lastfm = MockLastFMClient()
-        self.jamendo = MockJamendoClient()
+        self.review = MockReviewEngineClient()
         self.storage = MockRecommendationStorage()
         self.explainability = MockExplainabilityEngine()
     
@@ -1311,14 +1266,11 @@ class MockRecommendationEngine:
         """Generate mock recommendations."""
         start_time = time.time()
         
-        # Get some mock tracks from different APIs
-        spotify_tracks = await self.spotify.search_tracks("", limit=request.limit // 2)
-        deezer_tracks = await self.deezer.search_tracks("", limit=request.limit // 2)
-        
-        all_tracks = spotify_tracks + deezer_tracks
+        # Get some mock tracks from Last.fm
+        lastfm_tracks = await self.lastfm.search_tracks("", limit=request.limit)
         
         recommendations = []
-        for i, track in enumerate(all_tracks[:request.limit]):
+        for i, track in enumerate(lastfm_tracks[:request.limit]):
             explanation = f"Mock recommendation {i+1} for {request.user_intent}"
             
             recommendation = Recommendation(
@@ -1375,13 +1327,8 @@ class MockRecommendationEngine:
     
     async def _get_artist_metadata(self, artist_id: str) -> Artist:
         """Get artist metadata from available APIs."""
-        # Try Spotify first
-        artist = await self.spotify.get_artist(artist_id)
-        if artist:
-            return artist
-        
-        # Try Deezer
-        artist = await self.deezer.get_artist(artist_id)
+        # Try Last.fm
+        artist = await self.lastfm.get_artist(artist_id)
         if artist:
             return artist
         
@@ -1409,8 +1356,5 @@ class MockRecommendationEngine:
     
     async def close(self) -> None:
         """Close clients."""
-        await self.spotify.close()
-        await self.review.close()
-        await self.deezer.close()
         await self.lastfm.close()
-        await self.jamendo.close()
+        await self.review.close()

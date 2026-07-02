@@ -13,21 +13,15 @@ from pydantic_settings import BaseSettings
 
 from schemas import RecommendationRequest, RecommendationResponse
 from recommendation_engine import RecommendationEngine, MockRecommendationEngine
-from spotify_client import SpotifyClient, MockSpotifyClient
-from review_client import ReviewEngineClient, MockReviewEngineClient
-from deezer_client import DeezerClient, MockDeezerClient
 from lastfm_client import LastFMClient, MockLastFMClient
-from jamendo_client import JamendoClient, MockJamendoClient
+from review_client import ReviewEngineClient, MockReviewEngineClient
 from storage import RecommendationStorage, MockRecommendationStorage
 from explainability_engine import ExplainabilityEngine, MockExplainabilityEngine
 
 
 # Configuration
 class Settings(BaseSettings):
-    spotify_client_id: str = os.getenv("SPOTIFY_CLIENT_ID", "")
-    spotify_client_secret: str = os.getenv("SPOTIFY_CLIENT_SECRET", "")
     lastfm_api_key: str = os.getenv("LASTFM_API_KEY", "")
-    jamendo_client_id: str = os.getenv("JAMENDO_CLIENT_ID", "")
     review_engine_url: str = os.getenv("REVIEW_ENGINE_URL", "http://localhost:8003")
     use_mocks: bool = os.getenv("USE_MOCKS", "false").lower() == "true"
     config_file: str = "config.yaml"
@@ -74,22 +68,17 @@ async def lifespan(app: FastAPI):
         # Initialize components
         if settings.use_mocks:
             logger.info("Using mock implementations")
-            spotify_client = MockSpotifyClient()
-            review_client = MockReviewEngineClient()
-            deezer_client = MockDeezerClient()
             lastfm_client = MockLastFMClient()
-            jamendo_client = MockJamendoClient()
+            review_client = MockReviewEngineClient()
             storage = MockRecommendationStorage()
             explainability_engine = MockExplainabilityEngine()
             recommendation_engine = MockRecommendationEngine()
         else:
             logger.info("Using production implementations")
-            spotify_client = SpotifyClient(
-                client_id=settings.spotify_client_id,
-                client_secret=settings.spotify_client_secret,
-                timeout=config["spotify"]["timeout"],
-                max_retries=config["spotify"]["max_retries"],
-                rate_limit_delay=config["spotify"]["rate_limit_delay"]
+            lastfm_client = LastFMClient(
+                api_key=settings.lastfm_api_key,
+                timeout=config["lastfm"]["timeout"],
+                max_retries=config["lastfm"]["max_retries"]
             )
             review_client = ReviewEngineClient(
                 base_url=settings.review_engine_url,
@@ -97,38 +86,11 @@ async def lifespan(app: FastAPI):
                 max_retries=config["review_engine"]["max_retries"]
             )
             
-            # Initialize optional API clients
-            deezer_client = None
-            if config.get("deezer", {}).get("enabled", False):
-                deezer_client = DeezerClient(
-                    timeout=config["deezer"]["timeout"],
-                    max_retries=config["deezer"]["max_retries"]
-                )
-            
-            lastfm_client = None
-            if config.get("lastfm", {}).get("enabled", False) and settings.lastfm_api_key:
-                lastfm_client = LastFMClient(
-                    api_key=settings.lastfm_api_key,
-                    timeout=config["lastfm"]["timeout"],
-                    max_retries=config["lastfm"]["max_retries"]
-                )
-            
-            jamendo_client = None
-            if config.get("jamendo", {}).get("enabled", False) and settings.jamendo_client_id:
-                jamendo_client = JamendoClient(
-                    client_id=settings.jamendo_client_id,
-                    timeout=config["jamendo"]["timeout"],
-                    max_retries=config["jamendo"]["max_retries"]
-                )
-            
             storage = RecommendationStorage()
             explainability_engine = ExplainabilityEngine()
             recommendation_engine = RecommendationEngine(
-                spotify_client=spotify_client,
-                review_client=review_client,
-                deezer_client=deezer_client,
                 lastfm_client=lastfm_client,
-                jamendo_client=jamendo_client,
+                review_client=review_client,
                 storage=storage,
                 explainability_engine=explainability_engine,
                 config=config
@@ -170,11 +132,8 @@ async def health_check():
     dependencies = {}
     
     if not settings.use_mocks:
-        dependencies["spotify_api"] = "configured" if settings.spotify_client_id else "not_configured"
+        dependencies["lastfm_api"] = "configured" if settings.lastfm_api_key else "not_configured"
         dependencies["review_engine"] = settings.review_engine_url
-        dependencies["deezer_api"] = "enabled" if config.get("deezer", {}).get("enabled", False) else "disabled"
-        dependencies["lastfm_api"] = "enabled" if config.get("lastfm", {}).get("enabled", False) and settings.lastfm_api_key else "disabled"
-        dependencies["jamendo_api"] = "enabled" if config.get("jamendo", {}).get("enabled", False) and settings.jamendo_client_id else "disabled"
     
     return {
         "status": "healthy",

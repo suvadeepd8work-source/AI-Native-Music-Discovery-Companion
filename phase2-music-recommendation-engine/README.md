@@ -14,7 +14,7 @@ Phase 2 is a completely independent microservice that generates music recommenda
   - Genre Exploration
 
 - **Integration with External Services**:
-  - Spotify Web API for track/artist data and audio features
+  - Last.fm API for track/artist data (Free API)
   - Review Discovery Engine API for review insights
 
 - **Smart Recommendation Fusion**:
@@ -52,17 +52,17 @@ Phase 2 operates as a completely independent microservice:
 - Queries Review Discovery Engine for highly-rated but less-known artists
 - Filters by genre alignment with user preferences
 - Ranks by review sentiment and discovery score
-- Cross-references with Spotify popularity metrics
+- Cross-references with Last.fm popularity metrics
 
 #### 2. Mood-Activity Matching
 - Maps user mood/activity to audio feature ranges
-- Queries Spotify API with feature constraints
+- Queries Last.fm API with genre-based search
 - Applies diversity sampling to prevent repetition
-- Uses audio features: energy, valence, danceability, tempo, instrumentalness
+- Uses genre tags and popularity for matching
 
 #### 3. Similarity Search
 - Finds artists similar to user's preferred artists
-- Uses Spotify's recommendation API with seed artists
+- Uses Last.fm's similar artists API
 - Applies user constraints for filtering
 - Ranks by similarity + constraint satisfaction
 
@@ -83,7 +83,7 @@ Phase 2 operates as a completely independent microservice:
 ### Prerequisites
 
 - Python 3.8+
-- Spotify Developer Account (for production use)
+- Last.fm API Key (Free - obtain from https://www.last.fm/api/account/create)
 - Review Discovery Engine (optional, for production use)
 
 ### Setup
@@ -104,17 +104,17 @@ cp .env.example .env
 # Edit .env with your credentials
 ```
 
-4. For production use, obtain Spotify API credentials:
-   - Go to https://developer.spotify.com/dashboard
-   - Create an application
-   - Copy Client ID and Client Secret to `.env`
+4. For production use, obtain Last.fm API credentials:
+   - Go to https://www.last.fm/api/account/create
+   - Create an application (free)
+   - Copy API Key to `.env`
 
 ## Configuration
 
 Edit `config.yaml` to customize:
 
 - **Server settings**: host, port, workers
-- **Spotify API**: timeout, retries, rate limiting
+- **Last.fm API**: timeout, retries
 - **Review Engine**: base URL, timeout
 - **Strategy weights**: Adjust importance of each strategy
 - **Fusion settings**: diversity thresholds, recommendation limits
@@ -205,7 +205,7 @@ Health check endpoint.
   "version": "1.0.0",
   "mode": "production",
   "dependencies": {
-    "spotify_api": "configured",
+    "lastfm_api": "configured",
     "review_engine": "http://localhost:8003"
   }
 }
@@ -257,7 +257,7 @@ Then send requests to the running service.
 phase2-music-recommendation-engine/
 ├── api.py                      # FastAPI server
 ├── schemas.py                  # Pydantic models
-├── spotify_client.py           # Spotify API client
+├── lastfm_client.py            # Last.fm API client
 ├── review_client.py            # Review Engine API client
 ├── recommendation_engine.py    # Core recommendation engine
 ├── config.yaml                 # Configuration
@@ -278,12 +278,12 @@ phase2-music-recommendation-engine/
 
 - **Target Latency**: < 3 seconds for full recommendation
 - **Strategy Parallelization**: All strategies execute in parallel
-- **Caching**: Spotify data cached for 24 hours, review insights for 6 hours
-- **Rate Limiting**: Configurable rate limits for Spotify API
+- **Caching**: Last.fm data cached for 24 hours, review insights for 6 hours
+- **Rate Limiting**: Configurable rate limits for Last.fm API
 
 ## Error Handling
 
-- **Spotify API Errors**: Automatic retry with exponential backoff
+- **Last.fm API Errors**: Automatic retry with exponential backoff
 - **Review Engine Errors**: Fallback to other strategies
 - **Strategy Failures**: Individual strategy failures don't break the system
 - **Empty Results**: Returns error if no recommendations can be generated

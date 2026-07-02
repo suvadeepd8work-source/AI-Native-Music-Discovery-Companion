@@ -167,20 +167,21 @@ def mock_llm_response():
 
 
 @pytest.fixture
-def mock_spotify_response():
-    """Mock Spotify API response for testing"""
+def mock_lastfm_response():
+    """Mock Last.fm API response for testing"""
     return {
-        "tracks": {
-            "items": [
-                {
-                    "id": "track_001",
-                    "name": "Test Song",
-                    "artists": [{"name": "Test Artist"}],
-                    "album": {"name": "Test Album"},
-                    "duration_ms": 180000,
-                    "external_urls": {"spotify": "https://example.com/track"}
-                }
-            ]
+        "results": {
+            "trackmatches": {
+                "track": [
+                    {
+                        "name": "Test Song",
+                        "artist": "Test Artist",
+                        "url": "https://www.last.fm/music/Test+Artist/_/Test+Song",
+                        "listeners": 1000000,
+                        "mbid": "track_001"
+                    }
+                ]
+            }
         }
     }
 

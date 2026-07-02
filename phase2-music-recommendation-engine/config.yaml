@@ -6,29 +6,9 @@ server:
   workers: 1
   log_level: "info"
 
-spotify:
-  client_id: "${SPOTIFY_CLIENT_ID}"
-  client_secret: "${SPOTIFY_CLIENT_SECRET}"
-  redirect_uri: "http://localhost:8002/callback"
-  scope: "user-read-private user-read-email"
-  timeout: 30
-  max_retries: 5
-  rate_limit_delay: 60
-
-deezer:
-  enabled: true
-  timeout: 30
-  max_retries: 3
-
 lastfm:
   enabled: true
   api_key: "${LASTFM_API_KEY}"
-  timeout: 30
-  max_retries: 3
-
-jamendo:
-  enabled: true
-  client_id: "${JAMENDO_CLIENT_ID}"
   timeout: 30
   max_retries: 3
 
@@ -52,7 +32,7 @@ cache:
   db: 0
   password: "${REDIS_PASSWORD:}"
   ttl:
-    spotify_data: 86400  # 24 hours
+    lastfm_data: 86400  # 24 hours
     review_insights: 21600  # 6 hours
     feature_vectors: 43200  # 12 hours
 
@@ -137,7 +117,7 @@ health_check:
   enabled: true
   endpoint: "/health"
   dependencies:
-    - "spotify"
+    - "lastfm"
     - "database"
     - "cache"
     - "vector_store"
