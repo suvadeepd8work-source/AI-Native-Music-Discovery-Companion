@@ -20,7 +20,6 @@ class ResponseGenerator:
         self,
         groq_api_key: str,
         primary_model: str = "llama-3.1-70b-versatile",
-        secondary_model: str = "mixtral-8x7b",
         temperature: float = 0.7,
         max_tokens: int = 500,
         timeout: int = 30,
@@ -30,7 +29,6 @@ class ResponseGenerator:
     ):
         self.groq = Groq(api_key=groq_api_key)
         self.primary_model = primary_model
-        self.secondary_model = secondary_model
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.timeout = timeout
@@ -119,18 +117,11 @@ class ResponseGenerator:
                 intent=intent
             )
             
-            # Try primary model first
+            # Try primary model
             response_text = await self._generate_with_model(
                 prompt,
                 self.primary_model
             )
-            
-            if not response_text:
-                # Fallback to secondary model
-                response_text = await self._generate_with_model(
-                    prompt,
-                    self.secondary_model
-                )
             
             generated_response = GeneratedResponse(
                 content=response_text or "I understand. Let me help you with that.",

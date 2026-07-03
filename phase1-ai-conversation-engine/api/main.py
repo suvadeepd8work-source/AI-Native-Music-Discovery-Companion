@@ -17,6 +17,7 @@ from context_manager import (
 )
 from query_parser import QueryParser, MockQueryParser
 from response_generator import ResponseGenerator, MockResponseGenerator
+from combined_processor import CombinedIntentParser, MockCombinedIntentParser
 from .schemas import (
     ChatRequest,
     ChatResponse,
@@ -69,16 +70,15 @@ logger = structlog.get_logger(__name__)
 
 
 # Initialize components
-intent_recognizer: Optional[IntentRecognizer] = None
+combined_processor: Optional[CombinedIntentParser] = None
 context_manager: Optional[ContextManager] = None
-query_parser: Optional[QueryParser] = None
 response_generator: Optional[ResponseGenerator] = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown."""
-    global intent_recognizer, context_manager, query_parser, response_generator
+    global combined_processor, context_manager, response_generator
     
     logger.info("Starting Phase 1: AI Conversation Engine")
     
@@ -86,23 +86,17 @@ async def lifespan(app: FastAPI):
         # Initialize components
         if settings.use_mocks:
             logger.info("Using mock implementations")
-            intent_recognizer = MockIntentRecognizer(
-                confidence_threshold=config["intent"]["confidence_threshold"]
-            )
+            combined_processor = MockCombinedIntentParser()
             context_manager = MockContextManager(
                 max_history_length=config["memory"]["max_history_length"]
             )
-            query_parser = MockQueryParser()
             response_generator = MockResponseGenerator()
         else:
             logger.info("Using production implementations")
-            intent_recognizer = IntentRecognizer(
+            combined_processor = CombinedIntentParser(
                 groq_api_key=settings.groq_api_key,
                 primary_model=config["groq"]["primary_model"],
-                secondary_model=config["groq"]["secondary_model"],
                 fallback_model=config["groq"]["fallback_model"],
-                confidence_threshold=config["intent"]["confidence_threshold"],
-                fallback_intent=config["intent"]["fallback_intent"],
                 timeout=config["groq"]["timeout"]
             )
             context_manager = ContextManager(
@@ -110,12 +104,6 @@ async def lifespan(app: FastAPI):
                 max_history_length=config["memory"]["max_history_length"],
                 max_context_exchanges=config["memory"]["max_context_exchanges"],
                 auto_save=config["memory"]["auto_save"]
-            )
-            query_parser = QueryParser(
-                groq_api_key=settings.groq_api_key,
-                primary_model=config["groq"]["primary_model"],
-                secondary_model=config["groq"]["secondary_model"],
-                timeout=config["groq"]["timeout"]
             )
             response_generator = ResponseGenerator(
                 groq_api_key=settings.groq_api_key,
@@ -175,35 +163,24 @@ async def chat(request: ChatRequest):
     Main chat endpoint that processes user queries and returns AI responses.
     
     This endpoint:
-    1. Recognizes the user's intent
-    2. Parses the query to extract parameters
-    3. Retrieves user context
-    4. Generates a conversational response
-    5. Updates conversation history
+    1. Recognizes intent and parses query in a single combined call (optimized)
+    2. Retrieves user context
+    3. Generates a conversational response
+    4. Updates conversation history
     """
     try:
-        # Step 1: Recognize intent
-        intent_result = await intent_recognizer.recognize(request.query)
+        # Step 1: Combined intent recognition and query parsing (single API call)
+        intent_result, parsed_query = await combined_processor.process(request.query)
         logger.info(
-            "Intent recognized",
+            "Combined processing complete",
             query=request.query,
             intent=intent_result.intent.value,
-            confidence=intent_result.confidence
-        )
-        
-        # Step 2: Parse query
-        parsed_query = await query_parser.parse(
-            request.query,
-            intent=intent_result.intent.value
-        )
-        logger.info(
-            "Query parsed",
+            confidence=intent_result.confidence,
             mood=parsed_query.mood,
-            goal=parsed_query.goal,
-            genres=parsed_query.genres
+            goal=parsed_query.goal
         )
         
-        # Step 3: Get user context
+        # Step 2: Get user context
         user_context = await context_manager.get_context(
             request.user_id,
             request.session_id
@@ -238,7 +215,7 @@ async def chat(request: ChatRequest):
                 artist
             )
         
-        # Step 4: Update structured context with extracted information
+        # Step 3: Update structured context with extracted information
         await context_manager.update_structured_context(
             user_id=request.user_id,
             session_id=request.session_id,
@@ -251,7 +228,7 @@ async def chat(request: ChatRequest):
             confidence=max(intent_result.confidence, parsed_query.confidence)
         )
         
-        # Step 5: Add user message to history
+        # Step 4: Add user message to history
         await context_manager.add_message(
             request.user_id,
             request.session_id,
@@ -260,7 +237,7 @@ async def chat(request: ChatRequest):
             metadata={"intent": intent_result.intent.value}
         )
         
-        # Step 6: Generate response
+        # Step 5: Generate response
         context_dict = {
             "current_mood": user_context.current_mood.value if user_context.current_mood else None,
             "current_goal": user_context.current_goal.value if user_context.current_goal else None,
@@ -276,7 +253,7 @@ async def chat(request: ChatRequest):
             recommendations=None  # Recommendations come from Phase 2
         )
         
-        # Step 7: Add assistant message to history
+        # Step 6: Add assistant message to history
         await context_manager.add_message(
             request.user_id,
             request.session_id,
@@ -285,7 +262,7 @@ async def chat(request: ChatRequest):
             metadata={"intent": intent_result.intent.value}
         )
         
-        # Step 8: Generate structured JSON files
+        # Step 7: Generate structured JSON files
         await context_manager.generate_conversation_context_json(
             request.user_id,
             request.session_id
@@ -295,7 +272,7 @@ async def chat(request: ChatRequest):
             request.session_id
         )
         
-        # Step 9: Generate user memory JSON
+        # Step 8: Generate user memory JSON
         await context_manager.generate_user_memory_json(request.user_id)
         
         return ChatResponse(
@@ -319,9 +296,10 @@ async def recognize_intent(request: IntentRequest):
     """
     Intent recognition endpoint.
     Classifies the user's query into one of the supported intents.
+    Uses combined processor for efficiency.
     """
     try:
-        intent_result = await intent_recognizer.recognize(request.query)
+        intent_result, _ = await combined_processor.process(request.query)
         
         return IntentResponse(
             intent=intent_result.intent.value,
@@ -342,11 +320,12 @@ async def parse_query(request: ParseRequest):
     """
     Query parsing endpoint.
     Extracts structured parameters from natural language queries.
+    Uses combined processor for efficiency.
     """
     try:
-        parsed_query = await query_parser.parse(
+        _, parsed_query = await combined_processor.process(
             request.query,
-            intent=request.intent
+            conversation_history=None
         )
         
         return ParseResponse(

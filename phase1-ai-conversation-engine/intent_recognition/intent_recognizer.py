@@ -16,7 +16,6 @@ class IntentRecognizer:
         self,
         groq_api_key: str,
         primary_model: str = "llama-3.1-70b-versatile",
-        secondary_model: str = "mixtral-8x7b",
         fallback_model: str = "llama-3.1-8b",
         confidence_threshold: float = 0.7,
         fallback_intent: str = "GENERAL_CHAT",
@@ -26,7 +25,6 @@ class IntentRecognizer:
     ):
         self.groq = Groq(api_key=groq_api_key)
         self.primary_model = primary_model
-        self.secondary_model = secondary_model
         self.fallback_model = fallback_model
         self.confidence_threshold = confidence_threshold
         self.fallback_intent = fallback_intent
@@ -56,22 +54,13 @@ class IntentRecognizer:
                 conversation_history=conversation_history
             )
             
-            # Try primary model first
+            # Try primary model
             result = await self._recognize_with_model(prompt, self.primary_model)
             
-            # If confidence is below threshold, try secondary model
+            # If confidence is below threshold, use fallback
             if result.confidence < self.confidence_threshold:
                 logger.warning(
-                    "Primary model confidence below threshold",
-                    query=query,
-                    confidence=result.confidence
-                )
-                result = await self._recognize_with_model(prompt, self.secondary_model)
-            
-            # If still below threshold, use fallback
-            if result.confidence < self.confidence_threshold:
-                logger.warning(
-                    "Secondary model confidence below threshold, using fallback",
+                    "Primary model confidence below threshold, using fallback",
                     query=query,
                     confidence=result.confidence
                 )

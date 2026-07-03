@@ -304,6 +304,75 @@ Provide a conversational response that:
         
         return "\n".join(sections)
     
+    def build_combined_intent_parse_prompt(
+        self,
+        user_query: str,
+        conversation_history: Optional[List[Dict[str, str]]] = None
+    ) -> str:
+        """
+        Build a combined prompt for intent recognition and query parsing in a single call.
+        
+        Args:
+            user_query: The user's query
+            conversation_history: Optional conversation history for context
+            
+        Returns:
+            Combined prompt for both intent recognition and query parsing
+        """
+        sections = [
+            "Analyze the user's query to determine their intent and extract structured parameters.",
+            "",
+            "Possible intents:",
+            "- DISCOVER_NEW_ARTISTS: User wants to discover new music/hidden gems",
+            "- MOOD_BASED: User wants music matching a specific mood",
+            "- CODING_MUSIC: User wants music for coding/programming",
+            "- WORKOUT_MUSIC: User wants music for workout/exercise",
+            "- RELAXATION_MUSIC: User wants music for relaxation/sleep",
+            "- INSTRUMENTAL_MUSIC: User wants instrumental music",
+            "- GENRE_EXPLORATION: User wants to explore specific genres",
+            "- ARTIST_EXPLORATION: User wants music similar to specific artists",
+            "- ESCAPE_REPETITIVE: User wants to break out of repetitive patterns",
+            "- CLARIFICATION: User is asking for clarification",
+            "- FEEDBACK: User is providing feedback",
+            "- GENERAL_CHAT: General conversation",
+            "",
+            f"USER QUERY: {user_query}"
+        ]
+        
+        if conversation_history:
+            sections.append("")
+            sections.append("CONVERSATION HISTORY (last 3 turns):")
+            for turn in conversation_history[-3:]:
+                sections.append(f"User: {turn.get('user', '')}")
+                sections.append(f"Assistant: {turn.get('assistant', '')}")
+        
+        sections.append("")
+        sections.append("Extract the following parameters if present:")
+        sections.append("- mood: The mood the user wants (energetic, calm, melancholic, upbeat, happy, sad, focus, romantic, aggressive)")
+        sections.append("- activity: The activity the user is doing (coding, workout, studying, relaxation, sleep, focus)")
+        sections.append("- genres: List of genres mentioned")
+        sections.append("- artists: List of artists mentioned")
+        sections.append("- energy_level: high, medium, or low")
+        sections.append("- popularity_filter: mainstream, indie, or underground")
+        sections.append("- discovery_preference: novel, familiar, or balanced")
+        sections.append("- instrumental_only: true if user wants instrumental music")
+        sections.append("")
+        sections.append("Respond with a JSON object containing:")
+        sections.append("- intent: the detected intent")
+        sections.append("- confidence: confidence score (0.0-1.0)")
+        sections.append("- reasoning: brief reasoning for the intent")
+        sections.append("- mood: extracted mood (or null)")
+        sections.append("- goal: extracted activity (or null)")
+        sections.append("- genres: list of genres (or empty array)")
+        sections.append("- artists: list of artists (or empty array)")
+        sections.append("- discovery_preference: preference (or null)")
+        sections.append("- popularity_filter: filter (or null)")
+        sections.append("- instrumental_only: boolean")
+        sections.append("- energy_level: energy level (or null)")
+        sections.append("- keywords: list of keywords mentioned (or empty array)")
+        
+        return "\n".join(sections)
+
     def build_parser_prompt(
         self,
         user_query: str,

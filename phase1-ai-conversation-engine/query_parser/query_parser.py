@@ -27,14 +27,12 @@ class QueryParser:
         self,
         groq_api_key: str,
         primary_model: str = "llama-3.1-70b-versatile",
-        secondary_model: str = "mixtral-8x7b",
         timeout: int = 30,
         prompt_builder: Optional[PromptBuilder] = None,
         config: Optional[Dict[str, Any]] = None
     ):
         self.groq = Groq(api_key=groq_api_key)
         self.primary_model = primary_model
-        self.secondary_model = secondary_model
         self.timeout = timeout
         self.prompt_builder = prompt_builder or PromptBuilder(config or {})
         self.config = config or {}
@@ -61,17 +59,8 @@ class QueryParser:
                 intent=intent or "general"
             )
             
-            # Try primary model first
+            # Try primary model
             result = await self._parse_with_model(prompt, self.primary_model)
-            
-            # If confidence is low, try secondary model
-            if result.confidence < 0.5:
-                logger.warning(
-                    "Primary model confidence low, trying secondary",
-                    query=query,
-                    confidence=result.confidence
-                )
-                result = await self._parse_with_model(prompt, self.secondary_model)
             
             return result
             
