@@ -4145,16 +4145,339 @@ LOG_LEVEL=INFO
 
 ---
 
+## Phase 6: Automated Scheduler
+
+### Overview
+
+Phase 6 is an automated scheduler that executes the complete music discovery workflow on a weekly basis. It runs every Monday at 10:00 AM IST to ensure the system stays up-to-date with the latest reviews, insights, and recommendations.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Phase 6: Scheduler                           │
+│                   (APScheduler + AsyncIO)                       │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │
+                            │ Weekly Schedule (Monday 10:00 AM IST)
+                            │
+        ┌───────────────────┼───────────────────┐
+        │                   │                   │
+        ▼                   ▼                   ▼
+┌───────────────┐   ┌───────────────┐   ┌───────────────┐
+│ Review        │   │ Insight      │   │ Frontend      │
+│ Downloader    │   │ Generator    │   │ Updater       │
+└───────────────┘   └───────────────┘   └───────────────┘
+        │                   │                   │
+        └───────────────────┼───────────────────┘
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │ Workflow     │
+                    │ Executor    │
+                    └───────────────┘
+                            │
+        ┌───────────────────┼───────────────────┐
+        │                   │                   │
+        ▼                   ▼                   ▼
+┌───────────────┐   ┌───────────────┐   ┌───────────────┐
+│ Phase 1      │   │ Phase 2      │   │ Phase 3      │
+│ Sync          │   │ Sync          │   │ Sync          │
+└───────────────┘   └───────────────┘   └───────────────┘
+```
+
+### Components
+
+#### 1. Scheduler (`scheduler.py`)
+- **Technology**: APScheduler with AsyncIO
+- **Schedule**: Every Monday at 10:00 AM IST
+- **Timezone**: Asia/Kolkata
+- **Job Store**: Memory (configurable to SQLAlchemy)
+- **Executor**: AsyncIO with max 4 workers
+
+**Features**:
+- Automatic weekly execution
+- Manual workflow trigger for testing
+- Graceful shutdown
+- Misfire handling (1 hour grace time)
+- Job coalescing to prevent duplicate runs
+
+#### 2. Workflow Executor (`workflow_executor.py`)
+- Coordinates all phases of the music discovery system
+- Executes phase sync operations in parallel
+- Aggregates results from all phases
+- Handles individual phase failures gracefully
+
+**Workflow Steps**:
+1. Sync Phase 1: AI Conversation Engine
+2. Sync Phase 2: Music Recommendation Engine
+3. Sync Phase 3: AI Orchestration
+4. Sync Phase 4: Backend API
+
+#### 3. Review Downloader (`review_downloader.py`)
+- Downloads latest reviews from multiple music review sources
+- Supports parallel downloads from multiple sources
+- Configurable review limits per source
+
+**Review Sources**:
+- Pitchfork
+- Rolling Stone
+- NME
+- AllMusic
+
+**Features**:
+- Async HTTP requests
+- Timeout handling
+- Error recovery
+- Statistics tracking
+
+#### 4. Insight Generator (`insight_generator.py`)
+- Generates AI-powered insights from downloaded reviews
+- Uses Groq API for natural language analysis
+- Supports multiple insight types
+
+**Insight Types**:
+- Pain Points
+- Theme Clusters
+- User Segments
+- Product Insights
+- Executive Summary
+
+**Features**:
+- Parallel insight generation
+- Configurable insight types
+- Error handling per type
+- Statistics tracking
+
+#### 5. Frontend Updater (`frontend_updater.py`)
+- Updates frontend with latest data
+- Clears frontend cache
+- Updates multiple frontend components
+
+**Update Targets**:
+- Insights Page
+- Recommendations Page
+- History Page
+- Frontend Cache
+
+**Features**:
+- Async API calls
+- Timeout handling
+- Component-level updates
+- Cache invalidation
+
+#### 6. Scheduler Logger (`scheduler_logger.py`)
+- Logs all scheduler executions
+- Stores detailed execution history
+- JSON-formatted logs for easy parsing
+
+**Log Events**:
+- Workflow Start
+- Workflow Completion
+- Workflow Failure
+- Step Completion
+
+**Features**:
+- File-based logging
+- JSON format
+- Queryable history
+- Error tracking
+
+### Weekly Workflow Execution
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Weekly Workflow Start                         │
+│                    (Monday 10:00 AM IST)                         │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │ Log Workflow  │
+                    │ Start         │
+                    └───────┬───────┘
+                            │
+        ┌───────────────────┼───────────────────┐
+        │                   │                   │
+        ▼                   ▼                   ▼
+┌───────────────┐   ┌───────────────┐   ┌───────────────┐
+│ Download      │   │ Generate     │   │ Update        │
+│ Latest        │   │ Insights     │   │ Frontend      │
+│ Reviews       │   │              │   │               │
+└───────┬───────┘   └───────┬───────┘   └───────┬───────┘
+        │                   │                   │
+        └───────────────────┼───────────────────┘
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │ Execute       │
+                    │ Complete     │
+                    │ Workflow     │
+                    └───────┬───────┘
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │ Log Workflow  │
+                    │ Completion    │
+                    └───────────────┘
+```
+
+### Configuration
+
+**Scheduler Settings** (`config.yaml`):
+```yaml
+scheduler:
+  enabled: true
+  timezone: "Asia/Kolkata"
+  day_of_week: "mon"
+  hour: 10
+  minute: 0
+
+review_sources:
+  - pitchfork
+  - rolling_stone
+  - nme
+  - allmusic
+
+insight_generation:
+  insight_types:
+    - pain_points
+    - theme_clusters
+    - user_segments
+    - product_insights
+    - executive_summary
+```
+
+### Execution Modes
+
+#### Production Mode
+```bash
+python main.py
+```
+- Runs continuously
+- Executes on schedule
+- Logs to file
+- Uses real APIs
+
+#### Manual Execution
+```bash
+python main.py manual
+```
+- Executes workflow once
+- For testing or on-demand runs
+- Same logic as scheduled execution
+
+#### Mock Mode
+```bash
+USE_MOCKS=true python main.py
+```
+- Uses mock implementations
+- No external API calls
+- For development and testing
+
+### Logging
+
+**Log Location**: `./logs/scheduler/scheduler.log`
+
+**Log Format**: JSON
+
+**Log Entry Structure**:
+```json
+{
+  "event": "workflow_start",
+  "job_id": "workflow_20240115_100000",
+  "timestamp": "2024-01-15T10:00:00Z"
+}
+```
+
+**Query History**:
+```python
+from scheduler_logger import SchedulerLogger
+
+logger = SchedulerLogger(config)
+history = await logger.get_workflow_history(limit=10)
+```
+
+### Error Handling
+
+**Individual Step Failures**:
+- Logged but don't stop workflow
+- Other steps continue execution
+- Final status includes all step results
+
+**Workflow Failures**:
+- Logged with error details
+- Can be retried manually
+- Graceful degradation
+
+**Misfire Handling**:
+- 1 hour grace time for delayed executions
+- Coalescing prevents duplicate runs
+- Automatic recovery
+
+### Performance
+
+**Execution Time**:
+- Mock Mode: ~5-10 seconds
+- Production Mode: ~2-5 minutes (depends on API calls)
+
+**Parallel Execution**:
+- Review downloads: Parallel across sources
+- Insight generation: Parallel across types
+- Frontend updates: Parallel across components
+- Phase syncs: Parallel across phases
+
+**Resource Usage**:
+- Minimal CPU during idle time
+- Burst usage during execution
+- Memory: ~100-200 MB
+
+### Monitoring
+
+**Status Check**:
+```python
+scheduler.get_job_status()
+```
+
+**Next Run Time**:
+```python
+scheduler.get_next_run_time()
+```
+
+**Log Monitoring**:
+- Console output for real-time status
+- File logs for detailed history
+- JSON format for easy parsing
+
+### Phase Independence
+
+Phase 6 is completely independent:
+- **Separate Codebase**: Own directory structure
+- **Independent Deployment**: Can run as standalone service
+- **Own Configuration**: Separate config.yaml
+- **Own Dependencies**: Separate requirements.txt
+- **Mock Implementations**: All components have mocks
+- **Isolated Testing**: Can test without other phases
+- **Clear Interfaces**: Well-defined component APIs
+
+**Dependencies on Other Phases**:
+- Optional: Can run without other phases
+- Graceful degradation: Works if phases are unavailable
+- No direct code dependencies: Uses HTTP APIs
+- Can be deployed independently
+
+---
+
 ## Future Enhancements
 
-### Phase 6: Deployment
+### Phase 7: Deployment
 - Docker containerization
 - Kubernetes orchestration
 - CI/CD pipeline
 - Multi-region deployment
 - Load balancing
 
-### Phase 7: Advanced Features
+### Phase 8: Advanced Features
 - Voice input/output
 - Collaborative playlists
 - Social features
@@ -4162,7 +4485,7 @@ LOG_LEVEL=INFO
 - Offline mode
 - Advanced analytics dashboard
 
-### Phase 8: AI Improvements
+### Phase 9: AI Improvements
 - Fine-tuned models for music domain
 - Multi-modal AI (album art analysis)
 - Personalized model per user

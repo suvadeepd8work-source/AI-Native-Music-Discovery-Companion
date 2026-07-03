@@ -1,0 +1,67 @@
+# Phase 6: Scheduler Configuration
+
+# Scheduler Settings
+scheduler:
+  enabled: true
+  timezone: "Asia/Kolkata"  # IST timezone
+  day_of_week: "mon"  # Monday
+  hour: 10  # 10:00 AM
+  minute: 0
+  
+# Review Sources
+review_sources:
+  - pitchfork
+  - rolling_stone
+  - nme
+  - allmusic
+  
+# Review Download Settings
+review_download:
+  api_timeout: 30
+  max_reviews_per_source: 100
+  
+# Insight Generation Settings
+insight_generation:
+  insight_types:
+    - pain_points
+    - theme_clusters
+    - user_segments
+    - product_insights
+    - executive_summary
+  groq_api_key: "${GROQ_API_KEY}"
+  
+# Frontend Update Settings
+frontend_update:
+  frontend_url: "http://localhost:3000"
+  api_url: "http://localhost:8005"
+  update_timeout: 30
+  
+# Workflow Execution Settings
+workflow:
+  phase1_url: "http://localhost:8001"
+  phase2_url: "http://localhost:8002"
+  phase3_url: "http://localhost:8003"
+  phase4_url: "http://localhost:8005"
+  
+# Logging Settings
+logging:
+  log_dir: "./logs/scheduler"
+  log_level: "INFO"
+  log_format: "json"
+  
+# Job Store Settings
+job_store:
+  type: "memory"  # Options: memory, sqlalchemy, mongodb
+  # For sqlalchemy:
+  # url: "sqlite:///jobs.sqlite"
+  
+# Executor Settings
+executor:
+  type: "asyncio"
+  max_workers: 4
+  
+# Job Defaults
+job_defaults:
+  coalesce: true
+  max_instances: 1
+  misfire_grace_time: 3600  # 1 hour
