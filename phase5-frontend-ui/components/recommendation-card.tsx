@@ -87,25 +87,12 @@ export function RecommendationCard({
           </button>
         </div>
       </div>
-      {track.audio_preview_url && isPlaying && (
-        <div className="bg-[#181818] p-3">
-          <audio
-            src={track.audio_preview_url}
-            autoPlay
-            onEnded={() => setIsPlaying(false)}
-            controls
-            className="w-full h-8"
-          />
-        </div>
-      )}
       <div className="p-4 bg-[#282828]">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <h3 className="font-bold text-white truncate text-lg">{track.name}</h3>
             <p className="text-sm text-gray-400 truncate font-medium">{track.artist_name}</p>
-            {track.album_name && (
-              <p className="text-xs text-gray-500 truncate">{track.album_name}</p>
-            )}
+            <p className="text-xs text-gray-500 truncate">{track.album_name || "Unknown Album"}</p>
           </div>
           <button className="p-2 hover:bg-[#404040] rounded-full transition-colors">
             <MoreHorizontal className="h-5 w-5 text-gray-400" />
@@ -131,13 +118,11 @@ export function RecommendationCard({
             </span>
           )}
         </div>
-        {explanation && (
-          <div className="mt-4 p-3 bg-[#404040] rounded-lg">
-            <p className="text-xs text-gray-300 line-clamp-3 leading-relaxed">
-              <span className="text-[#1DB954] font-semibold">AI says:</span> {explanation}
-            </p>
-          </div>
-        )}
+        <div className="mt-4 p-3 bg-[#404040] rounded-lg">
+          <p className="text-xs text-gray-300 line-clamp-3 leading-relaxed">
+            <span className="text-[#1DB954] font-semibold">AI says:</span> {explanation || "Recommended based on your music preferences"}
+          </p>
+        </div>
         {community_reviews && community_reviews.length > 0 && (
           <div className="mt-4">
             <button
