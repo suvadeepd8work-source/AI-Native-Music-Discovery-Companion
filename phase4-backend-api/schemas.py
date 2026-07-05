@@ -198,9 +198,9 @@ class ConversationHistoryRequest:
 class ConversationHistoryResponse:
     """Response from conversation history endpoint."""
     user_id: str
-    session_id: Optional[str] = None
     history: List[Dict[str, Any]]
     total_count: int
+    session_id: Optional[str] = None
     success: bool = True
 
 
