@@ -287,10 +287,10 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
     Discover music endpoint.
     
     Generates music recommendations based on mood, activity, genres, and artists.
-    Uses real LastFM API data only - no mock data fallback.
+    Uses real LastFM API data with Review Engine integration for insights.
     """
     try:
-        # Use LastFM API for real music data only
+        # Use LastFM API for real music data
         recommendations = []
         strategies_used = ["lastfm_api"]
         
@@ -332,7 +332,7 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
             "track": search_query,
             "api_key": lastfm_api_key,
             "format": "json",
-            "limit": request.limit or 10
+            "limit": request.limit or 50
         }
         
         logger.info(f"LastFM URL: {lastfm_url}")
@@ -365,7 +365,6 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                     )
                 
                 logger.info(f"LastFM API response data keys: {data.keys()}")
-                logger.info(f"Full response data: {data}")
                 
                 if "results" not in data:
                     logger.error(f"'results' key not found in response. Keys: {data.keys()}")
@@ -396,8 +395,46 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                 
                 logger.info(f"Found {len(tracks)} tracks from LastFM")
                 
+                # Try to get insights from Review Engine
+                review_engine_insights = None
+                try:
+                    review_engine_url = os.getenv("REVIEW_ENGINE_URL", "https://ai-powered-review-discovery-engine.onrender.com")
+                    review_endpoint = f"{review_engine_url}/api/reviews"
+                    
+                    logger.info(f"Calling Review Engine: {review_endpoint}")
+                    
+                    review_params = {
+                        "query": search_query,
+                        "mood": request.mood or "",
+                        "activity": request.activity or "",
+                        "limit": min(request.limit or 10, 10)
+                    }
+                    
+                    async with session.get(review_endpoint, params=review_params) as review_response:
+                        if review_response.status == 200:
+                            review_data = await review_response.json()
+                            review_engine_insights = review_data
+                            logger.info(f"Review Engine response received: {review_data}")
+                            strategies_used.append("review_engine")
+                        else:
+                            logger.warning(f"Review Engine returned status {review_response.status}")
+                except Exception as review_error:
+                    logger.warning(f"Review Engine integration failed: {review_error}")
+                
                 for track in tracks[:request.limit]:
                     logger.info(f"Processing track: {track.get('name', 'Unknown')}")
+                    
+                    # Build explanation with Review Engine insights if available
+                    explanation = f"Found via LastFM search for '{search_query}'"
+                    community_reviews = []
+                    
+                    if review_engine_insights:
+                        explanation = f"Recommended based on your {request.mood or 'current'} mood and {request.activity or 'listening'} activity. "
+                        if review_engine_insights.get("insights"):
+                            explanation += review_engine_insights["insights"].get("recommendation_reason", "")
+                        if review_engine_insights.get("reviews"):
+                            community_reviews = review_engine_insights["reviews"][:3]
+                    
                     recommendations.append({
                         "track": {
                             "track_id": track.get("mbid", f"track_{track.get('name', '')}"),
@@ -409,7 +446,8 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                             "album_art_url": f"https://picsum.photos/seed/{track.get('name', 'default')}/300/300"
                         },
                         "confidence": 0.85,
-                        "explanation": f"Found via LastFM search for '{search_query}'"
+                        "explanation": explanation,
+                        "community_reviews": community_reviews
                     })
                 strategies_used.append("lastfm_search")
         
