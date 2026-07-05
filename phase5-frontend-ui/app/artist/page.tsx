@@ -78,11 +78,11 @@ export default function Artist() {
               <h2 className="text-lg font-semibold mb-4">Similar Artists</h2>
               <div className="mb-4">
                 <span className="text-sm text-muted-foreground">
-                  Found {results.artists.length} similar artists
+                  Found {results.similar_artists.length} similar artists
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {results.artists.map((artist, index) => (
+                {results.similar_artists.map((artist, index) => (
                   <ArtistCard
                     key={index}
                     artist={artist}
