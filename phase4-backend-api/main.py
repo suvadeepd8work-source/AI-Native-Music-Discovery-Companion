@@ -401,7 +401,9 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                     review_engine_url = os.getenv("REVIEW_ENGINE_URL", "https://ai-powered-review-discovery-engine.onrender.com")
                     review_endpoint = f"{review_engine_url}/api/reviews"
                     
-                    logger.info(f"Calling Review Engine: {review_endpoint}")
+                    logger.info(f"=== REVIEW ENGINE INTEGRATION ===")
+                    logger.info(f"Review Engine URL: {review_endpoint}")
+                    logger.info(f"Review Engine Env Var: {os.getenv('REVIEW_ENGINE_URL')}")
                     
                     review_params = {
                         "query": search_query,
@@ -410,16 +412,28 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                         "limit": min(request.limit or 10, 10)
                     }
                     
-                    async with session.get(review_endpoint, params=review_params) as review_response:
+                    logger.info(f"Review Engine Request Params: {review_params}")
+                    
+                    async with session.get(review_endpoint, params=review_params, timeout=10) as review_response:
+                        logger.info(f"Review Engine Response Status: {review_response.status}")
+                        logger.info(f"Review Engine Response Headers: {dict(review_response.headers)}")
+                        
+                        response_text = await review_response.text()
+                        logger.info(f"Review Engine Response Body: {response_text[:1000]}...")
+                        
                         if review_response.status == 200:
-                            review_data = await review_response.json()
-                            review_engine_insights = review_data
-                            logger.info(f"Review Engine response received: {review_data}")
-                            strategies_used.append("review_engine")
+                            try:
+                                review_data = await review_response.json()
+                                review_engine_insights = review_data
+                                logger.info(f"Review Engine Parsed Data: {review_data}")
+                                logger.info(f"Review Engine Insights Keys: {review_data.keys() if isinstance(review_data, dict) else 'Not a dict'}")
+                                strategies_used.append("review_engine")
+                            except Exception as json_error:
+                                logger.error(f"Failed to parse Review Engine JSON: {json_error}")
                         else:
-                            logger.warning(f"Review Engine returned status {review_response.status}")
+                            logger.warning(f"Review Engine returned non-200 status: {review_response.status}")
                 except Exception as review_error:
-                    logger.warning(f"Review Engine integration failed: {review_error}")
+                    logger.error(f"Review Engine integration failed: {review_error}", exc_info=True)
                 
                 for track in tracks[:request.limit]:
                     logger.info(f"Processing track: {track.get('name', 'Unknown')}")
