@@ -331,6 +331,41 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
         
         # Call LastFM API for track search
         lastfm_url = "http://ws.audioscrobbler.com/2.0/"
+        
+        if not lastfm_api_key:
+            logger.warning("LASTFM_API_KEY not set, using mock data")
+            # Return mock recommendations when API key is missing
+            mock_recommendations = []
+            for i in range(min(request.limit or 8, 8)):
+                mock_recommendations.append({
+                    "track": {
+                        "track_id": f"mock_track_{i}",
+                        "name": f"Mock Track {i+1}",
+                        "artist_name": f"Mock Artist {i+1}",
+                        "album_name": f"Mock Album {i+1}",
+                        "duration_ms": 180000,
+                        "popularity": 50 + (i * 5),
+                        "album_art_url": f"https://picsum.photos/seed/mock{i}/300/300",
+                        "audio_preview_url": None,
+                        "mood": request.mood or "Unknown",
+                        "energy": 5,
+                        "context": request.activity or "General listening",
+                        "listener_sentiment": "Growing",
+                        "similar_artists": [f"Mock Artist {i+1}"],
+                        "genre": request.genres[0] if request.genres and len(request.genres) > 0 else "Mixed"
+                    },
+                    "confidence": 0.85,
+                    "explanation": f"Mock recommendation for {request.mood or 'general'} mood",
+                    "community_reviews": []
+                })
+            
+            return schemas.DiscoverMusicResponse(
+                recommendations=mock_recommendations,
+                strategies_used=["mock_data"],
+                total_count=len(mock_recommendations),
+                success=True
+            )
+        
         params = {
             "method": "track.search",
             "track": search_query,
@@ -498,7 +533,7 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                     track_energy = min(10, max(1, int(track.get("listeners", 50) / 1000))) if track.get("listeners") else 5
                     track_context = request.activity or "General listening"
                     track_listener_sentiment = "Positive" if track.get("listeners", 0) > 10000 else "Growing"
-                    track_genre = request.genres[0] if request.genres else "Mixed"
+                    track_genre = request.genres[0] if request.genres and len(request.genres) > 0 else "Mixed"
                     track_similar_artists = [track.get("artist", "Unknown Artist")]
                     
                     recommendations.append({
@@ -537,6 +572,7 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
         raise
     except Exception as e:
         logger.error("=== DISCOVER ENDPOINT FAILED ===", error=str(e), exc_info=True)
+        logger.error(f"Request data: mood={request.mood}, activity={request.activity}, genres={request.genres}, limit={request.limit}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch music data: {str(e)}"
