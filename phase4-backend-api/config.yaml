@@ -13,8 +13,8 @@ use_mocks: false
 # API Configuration
 api:
   cors_origins:
-    - "https://ai-native-music-discovery-frontend.vercel.app"
-    - "https://ai-native-music-discovery-frontend.vercel.app/*"
+    - "https://ai-native-music-discovery-companion.vercel.app"
+    - "https://ai-native-music-discovery-companion.vercel.app/*"
     - "http://localhost:3000"
     - "http://localhost:8000"
     - "http://localhost:8001"
