@@ -288,83 +288,135 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
     Generates music recommendations based on mood, activity, genres, and artists.
     """
     try:
-        # Simplified implementation for deployment
-        # Generate mock recommendations based on request parameters
+        # Try to use LastFM API for real music data
         recommendations = []
-        strategies_used = ["review_discovery", "ai_analysis"]
+        strategies_used = ["lastfm_api"]
         
-        # Generate sample recommendations
-        sample_tracks = [
-            {
-                "track": {
-                    "track_id": "track_1",
-                    "name": "Midnight Dreams",
-                    "artist_name": "Luna Echo",
-                    "album_name": "Nocturnal",
-                    "duration_ms": 210000,
-                    "popularity": 85,
-                    "album_art_url": "https://picsum.photos/seed/album1/300/300"
-                },
-                "confidence": 0.92,
-                "explanation": f"Perfect for {request.mood or 'relaxed'} mood with {request.genres[0] if request.genres else 'electronic'} elements"
-            },
-            {
-                "track": {
-                    "track_id": "track_2",
-                    "name": "Electric Sunrise",
-                    "artist_name": "Neon Waves",
-                    "album_name": "Digital Horizons",
-                    "duration_ms": 195000,
-                    "popularity": 78,
-                    "album_art_url": "https://picsum.photos/seed/album2/300/300"
-                },
-                "confidence": 0.88,
-                "explanation": f"Matches your {request.activity or 'listening'} preference with high energy"
-            },
-            {
-                "track": {
-                    "track_id": "track_3",
-                    "name": "Velvet Sky",
-                    "artist_name": "Aurora Borealis",
-                    "album_name": "Northern Lights",
-                    "duration_ms": 240000,
-                    "popularity": 82,
-                    "album_art_url": "https://picsum.photos/seed/album3/300/300"
-                },
-                "confidence": 0.85,
-                "explanation": f"Based on review analysis for {request.genres[1] if len(request.genres) > 1 else 'indie'} genre"
-            },
-            {
-                "track": {
-                    "track_id": "track_4",
-                    "name": "Crystal Waters",
-                    "artist_name": "Ocean Drift",
-                    "album_name": "Deep Blue",
-                    "duration_ms": 225000,
-                    "popularity": 75,
-                    "album_art_url": "https://picsum.photos/seed/album4/300/300"
-                },
-                "confidence": 0.81,
-                "explanation": f"Recommended for {request.mood or 'calm'} atmosphere"
-            },
-            {
-                "track": {
-                    "track_id": "track_5",
-                    "name": "Golden Hour",
-                    "artist_name": "Sunset Collective",
-                    "album_name": "Twilight",
-                    "duration_ms": 200000,
-                    "popularity": 80,
-                    "album_art_url": "https://picsum.photos/seed/album5/300/300"
-                },
-                "confidence": 0.79,
-                "explanation": f"Popular choice for {request.activity or 'casual listening'}"
-            }
-        ]
+        if lastfm_api_key:
+            try:
+                # Use LastFM API to fetch tracks
+                import aiohttp
+                
+                # Build search query based on user preferences
+                search_query = ""
+                if request.genres:
+                    search_query = request.genres[0]
+                elif request.mood:
+                    search_query = request.mood
+                else:
+                    search_query = "popular"
+                
+                # Call LastFM API for track search
+                lastfm_url = "http://ws.audioscrobbler.com/2.0/"
+                params = {
+                    "method": "track.search",
+                    "track": search_query,
+                    "api_key": lastfm_api_key,
+                    "format": "json",
+                    "limit": request.limit or 10
+                }
+                
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(lastfm_url, params=params) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            if "results" in data and "trackmatches" in data["results"]:
+                                tracks = data["results"]["trackmatches"]["track"]
+                                if not isinstance(tracks, list):
+                                    tracks = [tracks]
+                                
+                                for track in tracks[:request.limit]:
+                                    recommendations.append({
+                                        "track": {
+                                            "track_id": track.get("mbid", f"track_{track.get('name', '')}"),
+                                            "name": track.get("name", "Unknown Track"),
+                                            "artist_name": track.get("artist", "Unknown Artist"),
+                                            "album_name": track.get("album", "Unknown Album"),
+                                            "duration_ms": 180000,  # Default duration
+                                            "popularity": int(track.get("listeners", 0)) if track.get("listeners") else 50,
+                                            "album_art_url": f"https://picsum.photos/seed/{track.get('name', 'default')}/300/300"
+                                        },
+                                        "confidence": 0.85,
+                                        "explanation": f"Found via LastFM search for '{search_query}'"
+                                    })
+                                strategies_used.append("lastfm_search")
+            
+            except Exception as e:
+                logger.warning(f"LastFM API error: {e}, falling back to mock data")
         
-        # Return requested number of recommendations
-        limit = min(request.limit, len(sample_tracks))
-        recommendations = sample_tracks[:limit]
+        # Fallback to mock data if LastFM fails or no API key
+        if not recommendations:
+            strategies_used = ["mock_data"]
+            sample_tracks = [
+                {
+                    "track": {
+                        "track_id": "track_1",
+                        "name": "Midnight Dreams",
+                        "artist_name": "Luna Echo",
+                        "album_name": "Nocturnal",
+                        "duration_ms": 210000,
+                        "popularity": 85,
+                        "album_art_url": "https://picsum.photos/seed/album1/300/300"
+                    },
+                    "confidence": 0.92,
+                    "explanation": f"Perfect for {request.mood or 'relaxed'} mood"
+                },
+                {
+                    "track": {
+                        "track_id": "track_2",
+                        "name": "Electric Sunrise",
+                        "artist_name": "Neon Waves",
+                        "album_name": "Digital Horizons",
+                        "duration_ms": 195000,
+                        "popularity": 78,
+                        "album_art_url": "https://picsum.photos/seed/album2/300/300"
+                    },
+                    "confidence": 0.88,
+                    "explanation": f"Matches your {request.activity or 'listening'} preference"
+                },
+                {
+                    "track": {
+                        "track_id": "track_3",
+                        "name": "Velvet Sky",
+                        "artist_name": "Aurora Borealis",
+                        "album_name": "Northern Lights",
+                        "duration_ms": 240000,
+                        "popularity": 82,
+                        "album_art_url": "https://picsum.photos/seed/album3/300/300"
+                    },
+                    "confidence": 0.85,
+                    "explanation": f"Based on {request.genres[0] if request.genres else 'indie'} genre"
+                },
+                {
+                    "track": {
+                        "track_id": "track_4",
+                        "name": "Crystal Waters",
+                        "artist_name": "Ocean Drift",
+                        "album_name": "Deep Blue",
+                        "duration_ms": 225000,
+                        "popularity": 75,
+                        "album_art_url": "https://picsum.photos/seed/album4/300/300"
+                    },
+                    "confidence": 0.81,
+                    "explanation": f"Recommended for {request.mood or 'calm'} atmosphere"
+                },
+                {
+                    "track": {
+                        "track_id": "track_5",
+                        "name": "Golden Hour",
+                        "artist_name": "Sunset Collective",
+                        "album_name": "Twilight",
+                        "duration_ms": 200000,
+                        "popularity": 80,
+                        "album_art_url": "https://picsum.photos/seed/album5/300/300"
+                    },
+                    "confidence": 0.79,
+                    "explanation": f"Popular choice for {request.activity or 'casual listening'}"
+                }
+            ]
+            
+            limit = min(request.limit, len(sample_tracks))
+            recommendations = sample_tracks[:limit]
         
         return schemas.DiscoverMusicResponse(
             recommendations=recommendations,
