@@ -3,161 +3,221 @@ API Schemas for Phase 4: Backend API.
 Request and response models for all endpoints.
 """
 from typing import Dict, Any, List, Optional
-from pydantic import BaseModel, Field
+from dataclasses import dataclass, field
 from datetime import datetime
 
 
 # Chat API
-class ChatRequest(BaseModel):
+@dataclass
+class ChatRequest:
     """Request for chat endpoint."""
-    user_id: str = Field(..., description="User identifier")
-    session_id: str = Field(..., description="Session identifier")
-    query: str = Field(..., description="User's natural language query")
-    conversation_history: Optional[List[Dict[str, str]]] = Field(default_factory=list, description="Conversation history")
-    enable_recommendations: bool = Field(default=True, description="Whether to generate recommendations")
-    enable_explanations: bool = Field(default=True, description="Whether to generate explanations")
-    enable_review_insights: bool = Field(default=True, description="Whether to use review insights")
-    max_recommendations: int = Field(default=10, ge=1, le=20, description="Maximum recommendations")
+    user_id: str
+    session_id: str
+    query: str
+    conversation_history: Optional[List[Dict[str, str]]] = None
+    enable_recommendations: bool = True
+    enable_explanations: bool = True
+    enable_review_insights: bool = True
+    max_recommendations: int = 10
+
+    def __post_init__(self):
+        if self.conversation_history is None:
+            self.conversation_history = []
+        if self.max_recommendations < 1:
+            self.max_recommendations = 1
+        elif self.max_recommendations > 20:
+            self.max_recommendations = 20
 
 
-class ChatResponse(BaseModel):
+@dataclass
+class ChatResponse:
     """Response from chat endpoint."""
-    response: str = Field(..., description="Conversational response")
-    intent: Optional[str] = Field(None, description="Detected intent")
-    recommendations: Optional[List[Dict[str, Any]]] = Field(None, description="Music recommendations")
-    success: bool = Field(..., description="Whether the request succeeded")
+    response: str
+    intent: Optional[str] = None
+    recommendations: Optional[List[Dict[str, Any]]] = None
+    success: bool = True
 
 
 # Discover Music API
-class DiscoverMusicRequest(BaseModel):
+@dataclass
+class DiscoverMusicRequest:
     """Request for discover music endpoint."""
-    user_id: str = Field(..., description="User identifier")
-    session_id: str = Field(..., description="Session identifier")
-    mood: Optional[str] = Field(None, description="Requested mood")
-    activity: Optional[str] = Field(None, description="Requested activity")
-    genres: Optional[List[str]] = Field(default_factory=list, description="Preferred genres")
-    artists: Optional[List[str]] = Field(default_factory=list, description="Preferred artists")
-    discovery_preference: str = Field(default="balanced", description="Discovery preference (novel, familiar, balanced)")
-    limit: int = Field(default=10, ge=1, le=20, description="Number of recommendations")
+    user_id: str
+    session_id: str
+    mood: Optional[str] = None
+    activity: Optional[str] = None
+    genres: Optional[List[str]] = None
+    artists: Optional[List[str]] = None
+    discovery_preference: str = "balanced"
+    limit: int = 10
+
+    def __post_init__(self):
+        if self.genres is None:
+            self.genres = []
+        if self.artists is None:
+            self.artists = []
+        if self.limit < 1:
+            self.limit = 1
+        elif self.limit > 20:
+            self.limit = 20
 
 
-class DiscoverMusicResponse(BaseModel):
+@dataclass
+class DiscoverMusicResponse:
     """Response from discover music endpoint."""
-    recommendations: List[Dict[str, Any]] = Field(..., description="Music recommendations")
-    strategies_used: List[str] = Field(..., description="Strategies that contributed")
-    total_count: int = Field(..., description="Total number of recommendations")
-    success: bool = Field(..., description="Whether the request succeeded")
+    recommendations: List[Dict[str, Any]]
+    strategies_used: List[str]
+    total_count: int
+    success: bool = True
 
 
 # Explain Recommendation API
-class ExplainRecommendationRequest(BaseModel):
+@dataclass
+class ExplainRecommendationRequest:
     """Request for explain recommendation endpoint."""
-    user_id: str = Field(..., description="User identifier")
-    recommendation_id: str = Field(..., description="Recommendation identifier")
+    user_id: str
+    recommendation_id: str
 
 
-class ExplainRecommendationResponse(BaseModel):
+@dataclass
+class ExplainRecommendationResponse:
     """Response from explain recommendation endpoint."""
-    recommendation_id: str = Field(..., description="Recommendation identifier")
-    song_selection_reasons: List[str] = Field(..., description="Why the song was selected")
-    artist_selection_reasons: List[str] = Field(..., description="Why the artist was selected")
-    user_preference_influences: List[str] = Field(..., description="Which user preferences influenced it")
-    conversation_context_influences: List[str] = Field(..., description="Which conversation context influenced it")
-    discovery_benefits: List[str] = Field(..., description="How it helps users discover new music")
-    scores: Dict[str, float] = Field(..., description="Scoring factors")
-    success: bool = Field(..., description="Whether the request succeeded")
+    recommendation_id: str
+    song_selection_reasons: List[str]
+    artist_selection_reasons: List[str]
+    user_preference_influences: List[str]
+    conversation_context_influences: List[str]
+    discovery_benefits: List[str]
+    scores: Dict[str, float]
+    success: bool = True
 
 
 # Recommendation History API
-class RecommendationHistoryRequest(BaseModel):
+@dataclass
+class RecommendationHistoryRequest:
     """Request for recommendation history endpoint."""
-    user_id: str = Field(..., description="User identifier")
-    limit: int = Field(default=50, ge=1, le=100, description="Number of history items")
+    user_id: str
+    limit: int = 50
+
+    def __post_init__(self):
+        if self.limit < 1:
+            self.limit = 1
+        elif self.limit > 100:
+            self.limit = 100
 
 
-class RecommendationHistoryResponse(BaseModel):
+@dataclass
+class RecommendationHistoryResponse:
     """Response from recommendation history endpoint."""
-    user_id: str = Field(..., description="User identifier")
-    history: List[Dict[str, Any]] = Field(..., description="Recommendation history")
-    total_count: int = Field(..., description="Total number of items")
-    success: bool = Field(..., description="Whether the request succeeded")
+    user_id: str
+    history: List[Dict[str, Any]]
+    total_count: int
+    success: bool = True
 
 
 # Trending Genres API
-class TrendingGenresRequest(BaseModel):
+@dataclass
+class TrendingGenresRequest:
     """Request for trending genres endpoint."""
-    limit: int = Field(default=20, ge=1, le=50, description="Number of genres")
+    limit: int = 20
+
+    def __post_init__(self):
+        if self.limit < 1:
+            self.limit = 1
+        elif self.limit > 50:
+            self.limit = 50
 
 
-class TrendingGenresResponse(BaseModel):
+@dataclass
+class TrendingGenresResponse:
     """Response from trending genres endpoint."""
-    genres: List[Dict[str, Any]] = Field(..., description="Trending genres with metadata")
-    total_count: int = Field(..., description="Total number of genres")
-    success: bool = Field(..., description="Whether the request succeeded")
+    genres: List[Dict[str, Any]]
+    total_count: int
+    success: bool = True
 
 
 # Similar Artists API
-class SimilarArtistsRequest(BaseModel):
+@dataclass
+class SimilarArtistsRequest:
     """Request for similar artists endpoint."""
-    artist_id: str = Field(..., description="Artist identifier")
-    limit: int = Field(default=10, ge=1, le=20, description="Number of similar artists")
+    artist_id: str
+    limit: int = 10
+
+    def __post_init__(self):
+        if self.limit < 1:
+            self.limit = 1
+        elif self.limit > 20:
+            self.limit = 20
 
 
-class SimilarArtistsResponse(BaseModel):
+@dataclass
+class SimilarArtistsResponse:
     """Response from similar artists endpoint."""
-    artist_id: str = Field(..., description="Original artist identifier")
-    similar_artists: List[Dict[str, Any]] = Field(..., description="Similar artists")
-    total_count: int = Field(..., description="Total number of similar artists")
-    success: bool = Field(..., description="Whether the request succeeded")
+    artist_id: str
+    similar_artists: List[Dict[str, Any]]
+    total_count: int
+    success: bool = True
 
 
 # Discovery Insights API
-class DiscoveryInsightsRequest(BaseModel):
+@dataclass
+class DiscoveryInsightsRequest:
     """Request for discovery insights endpoint."""
-    user_id: str = Field(..., description="User identifier")
-    insight_type: Optional[str] = Field(None, description="Type of insights (all, pain_points, themes, segments)")
+    user_id: str
+    insight_type: Optional[str] = None
 
 
-class DiscoveryInsightsResponse(BaseModel):
+@dataclass
+class DiscoveryInsightsResponse:
     """Response from discovery insights endpoint."""
-    user_id: str = Field(..., description="User identifier")
-    pain_points: List[Dict[str, Any]] = Field(default_factory=list, description="Identified pain points")
-    theme_clusters: List[Dict[str, Any]] = Field(default_factory=list, description="Theme clusters")
-    user_segments: List[Dict[str, Any]] = Field(default_factory=list, description="User segments")
-    product_insights: List[Dict[str, Any]] = Field(default_factory=list, description="Product insights")
-    executive_summary: Optional[str] = Field(None, description="Executive summary")
-    success: bool = Field(..., description="Whether the request succeeded")
+    user_id: str
+    pain_points: List[Dict[str, Any]] = field(default_factory=list)
+    theme_clusters: List[Dict[str, Any]] = field(default_factory=list)
+    user_segments: List[Dict[str, Any]] = field(default_factory=list)
+    product_insights: List[Dict[str, Any]] = field(default_factory=list)
+    executive_summary: Optional[str] = None
+    success: bool = True
 
 
 # Conversation History API
-class ConversationHistoryRequest(BaseModel):
+@dataclass
+class ConversationHistoryRequest:
     """Request for conversation history endpoint."""
-    user_id: str = Field(..., description="User identifier")
-    session_id: Optional[str] = Field(None, description="Session identifier (optional)")
-    limit: int = Field(default=50, ge=1, le=100, description="Number of history items")
+    user_id: str
+    session_id: Optional[str] = None
+    limit: int = 50
+
+    def __post_init__(self):
+        if self.limit < 1:
+            self.limit = 1
+        elif self.limit > 100:
+            self.limit = 100
 
 
-class ConversationHistoryResponse(BaseModel):
+@dataclass
+class ConversationHistoryResponse:
     """Response from conversation history endpoint."""
-    user_id: str = Field(..., description="User identifier")
-    session_id: Optional[str] = Field(None, description="Session identifier")
-    history: List[Dict[str, Any]] = Field(..., description="Conversation history")
-    total_count: int = Field(..., description="Total number of items")
-    success: bool = Field(..., description="Whether the request succeeded")
+    user_id: str
+    session_id: Optional[str] = None
+    history: List[Dict[str, Any]]
+    total_count: int
+    success: bool = True
 
 
 # Health Check API
-class HealthCheckResponse(BaseModel):
+@dataclass
+class HealthCheckResponse:
     """Response from health check endpoint."""
-    status: str = Field(..., description="Overall health status")
-    services: Dict[str, str] = Field(..., description="Individual service statuses")
-    version: str = Field(..., description="API version")
-    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Check timestamp")
+    status: str
+    services: Dict[str, str]
+    version: str
+    timestamp: datetime = field(default_factory=datetime.utcnow)
 
 
 # Error Response
-class ErrorResponse(BaseModel):
+@dataclass
+class ErrorResponse:
     """Standard error response."""
-    error: str = Field(..., description="Error message")
-    detail: Optional[str] = Field(None, description="Detailed error information")
-    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Error timestamp")
+    error: str
+    detail: Optional[str] = None
+    timestamp: datetime = field(default_factory=datetime.utcnow)
