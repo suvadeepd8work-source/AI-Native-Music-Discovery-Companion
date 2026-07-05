@@ -1,4 +1,4 @@
-import { Play, Heart, MoreHorizontal } from "lucide-react"
+import { Play, Heart, MoreHorizontal, MessageSquare, Star } from "lucide-react"
 import { useState } from "react"
 
 interface RecommendationCardProps {
@@ -12,6 +12,7 @@ interface RecommendationCardProps {
   }
   confidence: number
   explanation?: string
+  community_reviews?: any[]
   onPlay?: () => void
   onSave?: () => void
 }
@@ -20,11 +21,13 @@ export function RecommendationCard({
   track,
   confidence,
   explanation,
+  community_reviews,
   onPlay,
   onSave,
 }: RecommendationCardProps) {
   const [imageError, setImageError] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
+  const [showReviews, setShowReviews] = useState(false)
 
   const handleImageError = () => {
     setImageError(true)
@@ -115,6 +118,37 @@ export function RecommendationCard({
             <p className="text-xs text-gray-300 line-clamp-3 leading-relaxed">
               <span className="text-[#1DB954] font-semibold">AI says:</span> {explanation}
             </p>
+          </div>
+        )}
+        {community_reviews && community_reviews.length > 0 && (
+          <div className="mt-4">
+            <button
+              onClick={() => setShowReviews(!showReviews)}
+              className="flex items-center gap-2 text-xs text-[#1DB954] hover:text-[#1ed760] transition-colors"
+            >
+              <MessageSquare className="h-4 w-4" />
+              <span>Community Reviews ({community_reviews.length})</span>
+            </button>
+            {showReviews && (
+              <div className="mt-3 space-y-2">
+                {community_reviews.map((review, index) => (
+                  <div key={index} className="p-2 bg-[#404040] rounded-lg">
+                    <div className="flex items-center gap-1 mb-1">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`h-3 w-3 ${
+                            i < (review.rating || 4) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-600'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-300 line-clamp-2">{review.text || "Great song!"}</p>
+                    <p className="text-xs text-gray-500 mt-1">{review.author || "Anonymous"}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

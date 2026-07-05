@@ -182,6 +182,9 @@ export default function Home() {
                   track={rec.track}
                   confidence={rec.confidence}
                   explanation={rec.explanation}
+                  community_reviews={rec.community_reviews}
+                  onPlay={() => console.log("Play:", rec.track.name)}
+                  onSave={() => console.log("Save:", rec.track.name)}
                 />
               ))}
             </div>
