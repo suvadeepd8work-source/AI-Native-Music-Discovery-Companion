@@ -19,19 +19,22 @@ interface AIChatInterfaceProps {
 }
 
 export function AIChatInterface({ onRecommendationsReceived }: AIChatInterfaceProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      role: "assistant",
-      content: "Hi! I'm your AI Music Discovery Companion. I can help you find music based on millions of listener reviews and AI analysis. What kind of music are you looking for today?",
-      timestamp: new Date()
-    }
-  ])
+  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Initialize messages on client-side only to avoid hydration mismatch
+  useEffect(() => {
+    setMessages([{
+      id: "1",
+      role: "assistant",
+      content: "Hi! I'm your AI Music Discovery Companion. I can help you find music based on millions of listener reviews and AI analysis. What kind of music are you looking for today?",
+      timestamp: new Date()
+    }])
+  }, [])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })

@@ -58,8 +58,8 @@ class DiscoverMusicRequest:
             self.artists = []
         if self.limit < 1:
             self.limit = 1
-        elif self.limit > 20:
-            self.limit = 20
+        elif self.limit > 50:
+            self.limit = 50
 
 
 @dataclass
