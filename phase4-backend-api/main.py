@@ -302,7 +302,8 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                     "artist_name": "Luna Echo",
                     "album_name": "Nocturnal",
                     "duration_ms": 210000,
-                    "popularity": 85
+                    "popularity": 85,
+                    "album_art_url": "https://picsum.photos/seed/album1/300/300"
                 },
                 "confidence": 0.92,
                 "explanation": f"Perfect for {request.mood or 'relaxed'} mood with {request.genres[0] if request.genres else 'electronic'} elements"
@@ -314,7 +315,8 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                     "artist_name": "Neon Waves",
                     "album_name": "Digital Horizons",
                     "duration_ms": 195000,
-                    "popularity": 78
+                    "popularity": 78,
+                    "album_art_url": "https://picsum.photos/seed/album2/300/300"
                 },
                 "confidence": 0.88,
                 "explanation": f"Matches your {request.activity or 'listening'} preference with high energy"
@@ -326,7 +328,8 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                     "artist_name": "Aurora Borealis",
                     "album_name": "Northern Lights",
                     "duration_ms": 240000,
-                    "popularity": 82
+                    "popularity": 82,
+                    "album_art_url": "https://picsum.photos/seed/album3/300/300"
                 },
                 "confidence": 0.85,
                 "explanation": f"Based on review analysis for {request.genres[1] if len(request.genres) > 1 else 'indie'} genre"
@@ -338,7 +341,8 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                     "artist_name": "Ocean Drift",
                     "album_name": "Deep Blue",
                     "duration_ms": 225000,
-                    "popularity": 75
+                    "popularity": 75,
+                    "album_art_url": "https://picsum.photos/seed/album4/300/300"
                 },
                 "confidence": 0.81,
                 "explanation": f"Recommended for {request.mood or 'calm'} atmosphere"
@@ -350,7 +354,8 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                     "artist_name": "Sunset Collective",
                     "album_name": "Twilight",
                     "duration_ms": 200000,
-                    "popularity": 80
+                    "popularity": 80,
+                    "album_art_url": "https://picsum.photos/seed/album5/300/300"
                 },
                 "confidence": 0.79,
                 "explanation": f"Popular choice for {request.activity or 'casual listening'}"
