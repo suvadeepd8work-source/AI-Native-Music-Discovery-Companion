@@ -290,7 +290,7 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
     try:
         # Try to use LastFM API for real music data
         recommendations = []
-        strategies_used = ["lastfm_api"]
+        strategies_used = ["mock_data"]  # Default to mock
         
         if lastfm_api_key:
             try:
@@ -339,15 +339,15 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                                         "confidence": 0.85,
                                         "explanation": f"Found via LastFM search for '{search_query}'"
                                     })
-                                strategies_used.append("lastfm_search")
+                                strategies_used = ["lastfm_api", "lastfm_search"]
             
             except Exception as e:
-                logger.warning(f"LastFM API error: {e}, falling back to mock data")
+                logger.warning(f"LastFM API error: {e}, using mock data")
+                recommendations = []
         
-        # Fallback to mock data if LastFM fails or no API key
+        # Always use mock data as fallback if no recommendations
         if not recommendations:
-            strategies_used = ["mock_data"]
-            sample_tracks = [
+            recommendations = [
                 {
                     "track": {
                         "track_id": "track_1",
@@ -415,8 +415,8 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                 }
             ]
             
-            limit = min(request.limit, len(sample_tracks))
-            recommendations = sample_tracks[:limit]
+            limit = min(request.limit, len(recommendations))
+            recommendations = recommendations[:limit]
         
         return schemas.DiscoverMusicResponse(
             recommendations=recommendations,
