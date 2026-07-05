@@ -50,32 +50,126 @@ response_storage = None
 
 @app.on_event("startup")
 async def startup():
-    """Initialize components on startup."""
+    """Initialize components on startup with real Phase 1, 2, 3 components."""
     global orchestrator, conversation_memory, recommendation_storage, response_storage
     
     use_mocks = config.get("use_mocks", False)
     
-    # Use simple mock objects for now to allow backend startup
-    logger.info("Initializing components with simple mocks")
-    
-    # Simple mock orchestrator
-    orchestrator = type('MockOrchestrator', (), {
-        'orchestrate': lambda x: type('Response', (), {
-            'response': 'Mock response',
-            'intent': 'GENERAL_CHAT',
-            'recommendations': [],
-            'success': True
+    if use_mocks:
+        logger.info("Initializing components with mocks")
+        
+        # Simple mock orchestrator
+        orchestrator = type('MockOrchestrator', (), {
+            'orchestrate': lambda x: type('Response', (), {
+                'response': 'Mock response',
+                'intent': 'GENERAL_CHAT',
+                'recommendations': [],
+                'success': True
+            })()
         })()
-    })()
-    
-    # Simple mock context manager
-    conversation_memory = type('MockContextManager', (), {})()
-    
-    # Simple mock storage
-    recommendation_storage = type('MockRecommendationStorage', (), {})()
-    response_storage = type('MockResponseStorage', (), {})()
-    
-    logger.info("Components initialized successfully")
+        
+        # Simple mock context manager
+        conversation_memory = type('MockContextManager', (), {})()
+        
+        # Simple mock storage
+        recommendation_storage = type('MockRecommendationStorage', (), {})()
+        response_storage = type('MockResponseStorage', (), {})()
+        
+        logger.info("Mock components initialized successfully")
+    else:
+        logger.info("Initializing real Phase 1, 2, 3 components")
+        
+        try:
+            # Import Phase 3 Orchestrator
+            from phase3_ai_orchestration.orchestrator import Orchestrator
+            from phase3_ai_orchestration.orchestration_logger import OrchestrationLogger
+            
+            # Import Phase 1 components
+            from phase1_ai_conversation_engine.intent_recognition.intent_recognizer import IntentRecognizer
+            from phase1_ai_conversation_engine.query_parser.query_parser import QueryParser
+            from phase1_ai_conversation_engine.combined_processor import CombinedIntentParser
+            from phase1_ai_conversation_engine.response_generator.response_generator import ResponseGenerator
+            from phase1_ai_conversation_engine.context_manager.context_manager import ContextManager
+            
+            # Import Phase 2 components
+            from phase2_music_recommendation_engine.recommendation_engine import RecommendationEngine
+            from phase2_music_recommendation_engine.lastfm_client import LastFMClient
+            from phase2_music_recommendation_engine.review_client import ReviewEngineClient
+            from phase2_music_recommendation_engine.storage import RecommendationStorage
+            from phase2_music_recommendation_engine.explainability_engine import ExplainabilityEngine
+            
+            # Import Phase 1 storage
+            from phase1_ai_conversation_engine.response_storage.response_storage import ResponseStorage
+            
+            # Get API keys from environment
+            import os
+            groq_api_key = os.getenv("GROQ_API_KEY", "")
+            lastfm_api_key = os.getenv("LASTFM_API_KEY", "")
+            lastfm_shared_secret = os.getenv("LASTFM_SHARED_SECRET", "")
+            review_engine_url = os.getenv("REVIEW_ENGINE_URL", "https://ai-powered-review-discovery-engine.onrender.com")
+            
+            # Initialize Phase 1 components
+            intent_recognizer = IntentRecognizer(groq_api_key=groq_api_key)
+            query_parser = QueryParser(groq_api_key=groq_api_key)
+            combined_parser = CombinedIntentParser(groq_api_key=groq_api_key)
+            response_generator = ResponseGenerator(groq_api_key=groq_api_key)
+            context_manager = ContextManager()
+            
+            # Initialize Phase 2 components
+            lastfm_client = LastFMClient(api_key=lastfm_api_key, shared_secret=lastfm_shared_secret)
+            review_client = ReviewEngineClient(base_url=review_engine_url)
+            recommendation_storage = RecommendationStorage()
+            explainability_engine = ExplainabilityEngine()
+            recommendation_engine = RecommendationEngine(
+                lastfm_client=lastfm_client,
+                review_client=review_client,
+                storage=recommendation_storage,
+                explainability_engine=explainability_engine
+            )
+            
+            # Initialize Phase 1 storage
+            response_storage = ResponseStorage()
+            
+            # Initialize Phase 3 Orchestrator with combined parser
+            conversation_engine = {
+                "intent_recognizer": intent_recognizer,
+                "query_parser": query_parser,
+                "combined_parser": combined_parser
+            }
+            
+            orchestrator = Orchestrator(
+                conversation_engine=conversation_engine,
+                conversation_memory=context_manager,
+                review_client=review_client,
+                recommendation_engine=recommendation_engine,
+                explainability_engine=explainability_engine,
+                response_generator=response_generator,
+                orchestration_logger=OrchestrationLogger(config.get("orchestration_logger", {})),
+                config=config
+            )
+            
+            conversation_memory = context_manager
+            
+            logger.info("Real components initialized successfully")
+            
+        except ImportError as e:
+            logger.warning(f"Failed to import real components, falling back to mocks: {e}")
+            
+            # Fallback to mocks
+            orchestrator = type('MockOrchestrator', (), {
+                'orchestrate': lambda x: type('Response', (), {
+                    'response': 'Mock response (import failed)',
+                    'intent': 'GENERAL_CHAT',
+                    'recommendations': [],
+                    'success': True
+                })()
+            })()
+            
+            conversation_memory = type('MockContextManager', (), {})()
+            recommendation_storage = type('MockRecommendationStorage', (), {})()
+            response_storage = type('MockResponseStorage', (), {})()
+            
+            logger.info("Fallback mock components initialized")
 
 
 @app.get("/health", response_model=schemas.HealthCheckResponse)
