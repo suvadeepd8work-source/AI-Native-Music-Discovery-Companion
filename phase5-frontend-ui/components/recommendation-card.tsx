@@ -1,4 +1,5 @@
 import { Play, Heart, MoreHorizontal } from "lucide-react"
+import { useState } from "react"
 
 interface RecommendationCardProps {
   track: {
@@ -22,18 +23,38 @@ export function RecommendationCard({
   onPlay,
   onSave,
 }: RecommendationCardProps) {
+  const [imageError, setImageError] = useState(false)
+  const [imageLoaded, setImageLoaded] = useState(false)
+
+  const handleImageError = () => {
+    setImageError(true)
+  }
+
+  const handleImageLoad = () => {
+    setImageLoaded(true)
+  }
+
   return (
     <div className="group relative bg-[#282828] border border-[#404040] rounded-lg overflow-hidden hover:border-[#1DB954] transition-all hover:shadow-2xl hover:shadow-[#1DB954]/20">
       <div className="aspect-square bg-[#181818] relative">
-        {track.album_art_url ? (
-          <img
-            src={track.album_art_url}
-            alt={track.album_name || track.name}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              e.currentTarget.src = "https://via.placeholder.com/300?text=No+Art"
-            }}
-          />
+        {track.album_art_url && !imageError ? (
+          <>
+            <img
+              src={track.album_art_url}
+              alt={track.album_name || track.name}
+              className="w-full h-full object-cover"
+              onError={handleImageError}
+              onLoad={handleImageLoad}
+              style={{ display: imageLoaded ? 'block' : 'none' }}
+            />
+            {!imageLoaded && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#1a1a2e] to-[#16213e]">
+                <div className="w-16 h-16 bg-[#1DB954]/20 rounded-full flex items-center justify-center">
+                  <Play className="h-8 w-8 text-[#1DB954]" />
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#1a1a2e] to-[#16213e]">
             <div className="w-16 h-16 bg-[#1DB954]/20 rounded-full flex items-center justify-center">
