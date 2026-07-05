@@ -60,7 +60,7 @@ async def startup():
         from pathlib import Path
         from dotenv import load_dotenv
         import os
-        import httpx
+        import aiohttp
         from typing import List, Dict, Any, Optional
         
         project_root = Path(__file__).parent.parent
@@ -82,28 +82,28 @@ async def startup():
         class SimpleReviewEngineClient:
             def __init__(self, base_url: str):
                 self.base_url = base_url.rstrip("/")
-                self.timeout = 30
+                self.timeout = aiohttp.ClientTimeout(total=30)
             
             async def get_review_insights(self, limit: int = 20) -> List[Dict[str, Any]]:
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    response = await client.get(f"{self.base_url}/api/reviews", params={"limit": limit})
-                    response.raise_for_status()
-                    data = response.json()
-                    return data if isinstance(data, list) else data.get("reviews", [])
+                async with aiohttp.ClientSession(timeout=self.timeout) as session:
+                    async with session.get(f"{self.base_url}/api/reviews", params={"limit": limit}) as response:
+                        response.raise_for_status()
+                        data = await response.json()
+                        return data if isinstance(data, list) else data.get("reviews", [])
             
             async def get_theme_clusters(self, limit: int = 20) -> List[Dict[str, Any]]:
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    response = await client.get(f"{self.base_url}/api/insights/themes", params={"limit": limit})
-                    response.raise_for_status()
-                    data = response.json()
-                    return data if isinstance(data, list) else data.get("themes", [])
+                async with aiohttp.ClientSession(timeout=self.timeout) as session:
+                    async with session.get(f"{self.base_url}/api/insights/themes", params={"limit": limit}) as response:
+                        response.raise_for_status()
+                        data = await response.json()
+                        return data if isinstance(data, list) else data.get("themes", [])
             
             async def get_user_segments(self, limit: int = 20) -> List[Dict[str, Any]]:
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    response = await client.get(f"{self.base_url}/api/insights/segments", params={"limit": limit})
-                    response.raise_for_status()
-                    data = response.json()
-                    return data if isinstance(data, list) else data.get("segments", [])
+                async with aiohttp.ClientSession(timeout=self.timeout) as session:
+                    async with session.get(f"{self.base_url}/api/insights/segments", params={"limit": limit}) as response:
+                        response.raise_for_status()
+                        data = await response.json()
+                        return data if isinstance(data, list) else data.get("segments", [])
         
         # Initialize real Review Engine client
         review_client = SimpleReviewEngineClient(review_engine_url)

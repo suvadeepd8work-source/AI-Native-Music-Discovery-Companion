@@ -8,8 +8,8 @@ uvicorn[standard]==0.24.0
 pyyaml==6.0.1
 python-dotenv==1.0.0
 
-# HTTP Client
-httpx==0.25.0
+# HTTP Client (aiohttp for Python 3.14 compatibility)
+aiohttp==3.9.0
 
 # Logging
 structlog==23.2.0
