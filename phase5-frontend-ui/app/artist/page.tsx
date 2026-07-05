@@ -91,17 +91,6 @@ export default function Artist() {
                 ))}
               </div>
             </div>
-
-            {results.discovery_context && (
-              <div className="p-6 bg-card border border-border rounded-lg">
-                <h2 className="text-lg font-semibold mb-4">Discovery Context</h2>
-                <div className="space-y-2 text-sm text-muted-foreground">
-                  <p><strong>Strategy:</strong> {results.discovery_context.strategy}</p>
-                  <p><strong>Source:</strong> {results.discovery_context.source}</p>
-                  <p><strong>Confidence:</strong> {(results.discovery_context.confidence * 100).toFixed(0)}%</p>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
