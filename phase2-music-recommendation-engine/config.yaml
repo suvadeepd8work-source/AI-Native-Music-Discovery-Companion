@@ -9,6 +9,7 @@ server:
 lastfm:
   enabled: true
   api_key: "${LASTFM_API_KEY}"
+  shared_secret: "${LASTFM_SHARED_SECRET}"
   timeout: 30
   max_retries: 3
 
