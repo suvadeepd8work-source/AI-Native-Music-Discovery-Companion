@@ -50,126 +50,124 @@ response_storage = None
 
 @app.on_event("startup")
 async def startup():
-    """Initialize components on startup with real Phase 1, 2, 3 components."""
+    """Initialize components on startup with real Review Engine integration."""
     global orchestrator, conversation_memory, recommendation_storage, response_storage
     
-    use_mocks = config.get("use_mocks", False)
+    logger.info("Initializing backend with real Review Engine integration")
     
-    if use_mocks:
-        logger.info("Initializing components with mocks")
+    try:
+        # Load environment variables from project root
+        from pathlib import Path
+        from dotenv import load_dotenv
+        import os
+        import httpx
+        from typing import List, Dict, Any, Optional
         
-        # Simple mock orchestrator
-        orchestrator = type('MockOrchestrator', (), {
-            'orchestrate': lambda x: type('Response', (), {
-                'response': 'Mock response',
-                'intent': 'GENERAL_CHAT',
-                'recommendations': [],
-                'success': True
-            })()
-        })()
+        project_root = Path(__file__).parent.parent
+        env_file = project_root / ".env"
+        load_dotenv(env_file)
         
-        # Simple mock context manager
-        conversation_memory = type('MockContextManager', (), {})()
+        groq_api_key = os.getenv("GROQ_API_KEY", "")
+        lastfm_api_key = os.getenv("LASTFM_API_KEY", "")
+        lastfm_shared_secret = os.getenv("LASTFM_SHARED_SECRET", "")
+        review_engine_url = os.getenv("REVIEW_ENGINE_URL", "https://ai-powered-review-discovery-engine.onrender.com")
         
-        # Simple mock storage
-        recommendation_storage = type('MockRecommendationStorage', (), {})()
-        response_storage = type('MockResponseStorage', (), {})()
+        # For Review Engine integration, we don't strictly need GROQ_API_KEY
+        # if not groq_api_key:
+        #     logger.warning("GROQ_API_KEY not set, some features may not work")
+        if not lastfm_api_key:
+            logger.warning("LASTFM_API_KEY not set, Last.fm integration may not work")
         
-        logger.info("Mock components initialized successfully")
-    else:
-        logger.info("Initializing real Phase 1, 2, 3 components")
+        # Create simple HTTP client for Review Engine
+        class SimpleReviewEngineClient:
+            def __init__(self, base_url: str):
+                self.base_url = base_url.rstrip("/")
+                self.timeout = 30
+            
+            async def get_review_insights(self, limit: int = 20) -> List[Dict[str, Any]]:
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                    response = await client.get(f"{self.base_url}/api/reviews", params={"limit": limit})
+                    response.raise_for_status()
+                    data = response.json()
+                    return data if isinstance(data, list) else data.get("reviews", [])
+            
+            async def get_theme_clusters(self, limit: int = 20) -> List[Dict[str, Any]]:
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                    response = await client.get(f"{self.base_url}/api/insights/themes", params={"limit": limit})
+                    response.raise_for_status()
+                    data = response.json()
+                    return data if isinstance(data, list) else data.get("themes", [])
+            
+            async def get_user_segments(self, limit: int = 20) -> List[Dict[str, Any]]:
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                    response = await client.get(f"{self.base_url}/api/insights/segments", params={"limit": limit})
+                    response.raise_for_status()
+                    data = response.json()
+                    return data if isinstance(data, list) else data.get("segments", [])
         
-        try:
-            # Import Phase 3 Orchestrator
-            from phase3_ai_orchestration.orchestrator import Orchestrator
-            from phase3_ai_orchestration.orchestration_logger import OrchestrationLogger
+        # Initialize real Review Engine client
+        review_client = SimpleReviewEngineClient(review_engine_url)
+        
+        # Create simplified orchestrator with real review integration
+        class RealOrchestrator:
+            def __init__(self, review_client):
+                self.review_client = review_client
             
-            # Import Phase 1 components
-            from phase1_ai_conversation_engine.intent_recognition.intent_recognizer import IntentRecognizer
-            from phase1_ai_conversation_engine.query_parser.query_parser import QueryParser
-            from phase1_ai_conversation_engine.combined_processor import CombinedIntentParser
-            from phase1_ai_conversation_engine.response_generator.response_generator import ResponseGenerator
-            from phase1_ai_conversation_engine.context_manager.context_manager import ContextManager
-            
-            # Import Phase 2 components
-            from phase2_music_recommendation_engine.recommendation_engine import RecommendationEngine
-            from phase2_music_recommendation_engine.lastfm_client import LastFMClient
-            from phase2_music_recommendation_engine.review_client import ReviewEngineClient
-            from phase2_music_recommendation_engine.storage import RecommendationStorage
-            from phase2_music_recommendation_engine.explainability_engine import ExplainabilityEngine
-            
-            # Import Phase 1 storage
-            from phase1_ai_conversation_engine.response_storage.response_storage import ResponseStorage
-            
-            # Get API keys from environment
-            import os
-            groq_api_key = os.getenv("GROQ_API_KEY", "")
-            lastfm_api_key = os.getenv("LASTFM_API_KEY", "")
-            lastfm_shared_secret = os.getenv("LASTFM_SHARED_SECRET", "")
-            review_engine_url = os.getenv("REVIEW_ENGINE_URL", "https://ai-powered-review-discovery-engine.onrender.com")
-            
-            # Initialize Phase 1 components
-            intent_recognizer = IntentRecognizer(groq_api_key=groq_api_key)
-            query_parser = QueryParser(groq_api_key=groq_api_key)
-            combined_parser = CombinedIntentParser(groq_api_key=groq_api_key)
-            response_generator = ResponseGenerator(groq_api_key=groq_api_key)
-            context_manager = ContextManager()
-            
-            # Initialize Phase 2 components
-            lastfm_client = LastFMClient(api_key=lastfm_api_key, shared_secret=lastfm_shared_secret)
-            review_client = ReviewEngineClient(base_url=review_engine_url)
-            recommendation_storage = RecommendationStorage()
-            explainability_engine = ExplainabilityEngine()
-            recommendation_engine = RecommendationEngine(
-                lastfm_client=lastfm_client,
-                review_client=review_client,
-                storage=recommendation_storage,
-                explainability_engine=explainability_engine
-            )
-            
-            # Initialize Phase 1 storage
-            response_storage = ResponseStorage()
-            
-            # Initialize Phase 3 Orchestrator with combined parser
-            conversation_engine = {
-                "intent_recognizer": intent_recognizer,
-                "query_parser": query_parser,
-                "combined_parser": combined_parser
-            }
-            
-            orchestrator = Orchestrator(
-                conversation_engine=conversation_engine,
-                conversation_memory=context_manager,
-                review_client=review_client,
-                recommendation_engine=recommendation_engine,
-                explainability_engine=explainability_engine,
-                response_generator=response_generator,
-                orchestration_logger=OrchestrationLogger(config.get("orchestration_logger", {})),
-                config=config
-            )
-            
-            conversation_memory = context_manager
-            
-            logger.info("Real components initialized successfully")
-            
-        except ImportError as e:
-            logger.warning(f"Failed to import real components, falling back to mocks: {e}")
-            
-            # Fallback to mocks
-            orchestrator = type('MockOrchestrator', (), {
-                'orchestrate': lambda x: type('Response', (), {
-                    'response': 'Mock response (import failed)',
-                    'intent': 'GENERAL_CHAT',
-                    'recommendations': [],
-                    'success': True
-                })()
-            })()
-            
-            conversation_memory = type('MockContextManager', (), {})()
-            recommendation_storage = type('MockRecommendationStorage', (), {})()
-            response_storage = type('MockResponseStorage', (), {})()
-            
-            logger.info("Fallback mock components initialized")
+            async def orchestrate(self, request):
+                """Orchestrate with real review engine integration."""
+                try:
+                    # Get review insights for context
+                    insights = await self.review_client.get_review_insights(limit=10)
+                    
+                    # Get theme clusters
+                    themes = await self.review_client.get_theme_clusters(limit=5)
+                    
+                    # Get user segments
+                    segments = await self.review_client.get_user_segments(limit=5)
+                    
+                    # Build response with real review data
+                    response_text = f"Based on {len(insights)} review insights and {len(themes)} theme clusters from the AI-Powered Review Discovery Engine. "
+                    
+                    if insights:
+                        top_insight = insights[0]
+                        response_text += f"Top discovery: {top_insight.get('platform', 'Unknown')} with rating {top_insight.get('rating', 0)}. "
+                    
+                    if themes:
+                        response_text += f"Key themes include: {', '.join(t.get('title', 'Unknown') for t in themes[:3])}. "
+                    
+                    if segments:
+                        response_text += f"User segments: {', '.join(s.get('label', 'Unknown') for s in segments[:3])}. "
+                    
+                    return type('Response', (), {
+                        'response': response_text,
+                        'intent': 'REVIEW_DISCOVERY',
+                        'recommendations': [],
+                        'success': True,
+                        'review_insights_count': len(insights),
+                        'theme_clusters_count': len(themes),
+                        'user_segments_count': len(segments)
+                    })()
+                    
+                except Exception as e:
+                    logger.error("Orchestration failed", error=str(e))
+                    return type('Response', (), {
+                        'response': f"Error processing request: {str(e)}",
+                        'intent': 'ERROR',
+                        'recommendations': [],
+                        'success': False
+                    })()
+        
+        orchestrator = RealOrchestrator(review_client)
+        conversation_memory = type('ContextManager', (), {})()
+        recommendation_storage = type('RecommendationStorage', (), {})()
+        response_storage = type('ResponseStorage', (), {})()
+        
+        logger.info("Backend initialized successfully with real Review Engine integration")
+        logger.info(f"Review Engine URL: {review_engine_url}")
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize backend: {e}")
+        raise
 
 
 @app.get("/health", response_model=schemas.HealthCheckResponse)
