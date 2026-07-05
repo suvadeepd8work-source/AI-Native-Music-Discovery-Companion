@@ -226,7 +226,7 @@ class Orchestrator:
         pipeline_steps: List[PipelineStep],
         execution_id: str
     ) -> PipelineStep:
-        """Execute Conversation Engine step."""
+        """Execute Conversation Engine step using CombinedIntentParser for optimization."""
         step = PipelineStep(
             step_name="conversation_engine",
             step_order=1,
@@ -236,17 +236,23 @@ class Orchestrator:
         pipeline_steps.append(step)
         
         try:
-            # Intent Recognition
-            intent_result = await self.conversation_engine["intent_recognizer"].recognize(
-                request.query,
-                request.conversation_history
-            )
-            
-            # Query Parsing
-            parsed_query = await self.conversation_engine["query_parser"].parse(
-                request.query,
-                intent_result.intent
-            )
+            # Use CombinedIntentParser for single API call (intent + parsing)
+            if "combined_parser" in self.conversation_engine:
+                # Optimized single API call
+                intent_result, parsed_query = await self.conversation_engine["combined_parser"].process(
+                    request.query,
+                    request.conversation_history
+                )
+            else:
+                # Fallback to separate calls
+                intent_result = await self.conversation_engine["intent_recognizer"].recognize(
+                    request.query,
+                    request.conversation_history
+                )
+                parsed_query = await self.conversation_engine["query_parser"].parse(
+                    request.query,
+                    intent_result.intent
+                )
             
             step.status = "completed"
             step.completed_at = datetime.utcnow()

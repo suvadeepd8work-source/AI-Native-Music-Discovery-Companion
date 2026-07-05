@@ -156,6 +156,17 @@ class RecommendationEngine:
         self.strategies_config = self.config.get("recommendation", {}).get("strategies", {})
         self.fusion_config = self.config.get("recommendation", {}).get("fusion", {})
         self.api_config = self.config.get("api_sources", {})
+        
+        # Cache for reducing redundant API calls
+        self._track_cache: Dict[str, Any] = {}
+        self._artist_cache: Dict[str, Any] = {}
+        self._cache_ttl = 1800  # 30 minutes cache
+    
+    def clear_cache(self):
+        """Clear the recommendation engine cache."""
+        self._track_cache.clear()
+        self._artist_cache.clear()
+        logger.info("Recommendation engine cache cleared")
     
     async def generate_recommendations(
         self,
@@ -507,7 +518,7 @@ class RecommendationEngine:
         self,
         request: RecommendationRequest
     ) -> StrategyResult:
-        """Strategy: Similarity search基于 preferred artists."""
+        """Strategy: Similarity search based on preferred artists with optimized API calls."""
         start_time = time.time()
         
         try:
@@ -517,44 +528,49 @@ class RecommendationEngine:
             
             candidates = []
             
-            # For each preferred artist, search for similar artists using Last.fm
+            # Collect all similar artist names first to batch track searches
+            all_similar_artist_names = set()
+            
             for artist_name in request.preferred_artists[:2]:
                 # Get similar artists from Last.fm
                 similar_artists = await self.lastfm.get_similar_artists(artist_name, limit=max_results)
+                # Add artist names to set for deduplication
+                all_similar_artist_names.update([sa.artist_name for sa in similar_artists])
+            
+            # Batch search for tracks from all similar artists at once
+            # This reduces API calls from N*M to N+1 where N=artists, M=similar_artists_per_artist
+            tracks = []
+            artist_search_query = " OR ".join(list(all_similar_artist_names)[:5])  # Limit to 5 artists for search
+            if artist_search_query:
+                tracks = await self.lastfm.search_tracks(
+                    query=artist_search_query,
+                    limit=max_results * 3
+                )
+            
+            # Filter out previously recommended
+            tracks = [
+                t for t in tracks
+                if t.track_id not in request.previously_recommended_songs
+                and t.artist_id not in request.previously_recommended_artists
+            ]
+            
+            for track in tracks[:max_results]:
+                # Simple similarity score based on genre overlap
+                score = 0.8  # Base similarity score
                 
-                # Search for tracks from similar artists
-                tracks = []
-                for similar_artist in similar_artists:
-                    artist_tracks = await self.lastfm.search_tracks(
-                        query=similar_artist.artist_name,
-                        limit=2
-                    )
-                    tracks.extend(artist_tracks)
+                if track.artist_name not in request.preferred_artists:
+                    score += 0.1  # Bonus for different artist
                 
-                # Filter out previously recommended
-                tracks = [
-                    t for t in tracks
-                    if t.track_id not in request.previously_recommended_songs
-                    and t.artist_id not in request.previously_recommended_artists
-                ]
-                
-                for track in tracks[:max_results]:
-                    # Simple similarity score based on genre overlap
-                    score = 0.8  # Base similarity score
-                    
-                    if track.artist_name != artist_name:
-                        score += 0.1  # Bonus for different artist
-                    
-                    candidate = RecommendationCandidate(
-                        item=track,
-                        strategy="similarity_search",
-                        score=score,
-                        metadata={
-                            "reference_artist": artist_name,
-                            "similarity_score": score
-                        }
-                    )
-                    candidates.append(candidate)
+                candidate = RecommendationCandidate(
+                    item=track,
+                    strategy="similarity_search",
+                    score=score,
+                    metadata={
+                        "reference_artists": request.preferred_artists[:2],
+                        "similarity_score": score
+                    }
+                )
+                candidates.append(candidate)
             
             execution_time_ms = (time.time() - start_time) * 1000
             

@@ -35,6 +35,10 @@ class ResponseGenerator:
         self.prompt_builder = prompt_builder or PromptBuilder(config or {})
         self.storage = storage or ResponseStorage(config.get("response_storage", {}) if config else {})
         self.config = config or {}
+        
+        # Response cache to reduce redundant API calls
+        self._cache: Dict[str, tuple] = {}
+        self._cache_ttl = 3600  # 1 hour cache
     
     async def generate(
         self,
@@ -64,6 +68,16 @@ class ResponseGenerator:
             GeneratedResponse with the conversational response
         """
         try:
+            # Create cache key based on query, intent, and key context
+            cache_key = f"{query}_{intent}_{str(context.get('current_mood'))}_{str(context.get('current_activity'))}"
+            
+            # Check cache
+            if cache_key in self._cache:
+                cached_response, cached_time = self._cache[cache_key]
+                if asyncio.get_event_loop().time() - cached_time < self._cache_ttl:
+                    logger.info("Using cached response", query=query)
+                    return cached_response
+            
             # Build prompt context
             prompt_context = PromptContext(
                 intent=intent,
@@ -129,6 +143,9 @@ class ResponseGenerator:
                 intent=intent,
                 confidence=0.8
             )
+            
+            # Cache the response
+            self._cache[cache_key] = (generated_response, asyncio.get_event_loop().time())
             
             # Store response if user_id and session_id provided
             if user_id and session_id:
@@ -198,6 +215,11 @@ class ResponseGenerator:
                 error=str(e)
             )
             return None
+    
+    def clear_cache(self):
+        """Clear the response cache."""
+        self._cache.clear()
+        logger.info("Response cache cleared")
 
 
 class MockResponseGenerator:
