@@ -4856,6 +4856,327 @@ Phase 6 is completely independent:
 
 ---
 
+## Phase 7: Deployment - Production Infrastructure
+
+### Overview
+
+Phase 7 provides production deployment infrastructure for the AI-Native Music Discovery Companion. The application is deployed across multiple cloud platforms for optimal performance and scalability.
+
+### Deployment Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Production Deployment                          │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │
+            ┌───────────────┼───────────────┐
+            │               │               │
+            ▼               ▼               ▼
+    ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+    │   Frontend   │ │   Backend    │ │   Scheduler  │
+    │   (Vercel)   │ │   (Render)   │ │  (GitHub)    │
+    └──────────────┘ └──────────────┘ └──────────────┘
+            │               │               │
+            └───────────────┼───────────────┘
+                            │
+                            ▼
+                    ┌──────────────┐
+                    │   External   │
+                    │   Services   │
+                    └──────────────┘
+```
+
+### Frontend Deployment (Vercel)
+
+**Platform**: Vercel
+
+**Configuration**: `phase5-frontend-ui/vercel.json`
+
+**Features**:
+- Next.js framework with automatic optimization
+- Global CDN distribution
+- Automatic SSL certificates
+- Edge network caching
+- Zero-downtime deployments
+
+**Environment Variables**:
+```bash
+NEXT_PUBLIC_API_URL=https://ai-native-music-discovery-backend.onrender.com
+NEXT_PUBLIC_APP_NAME=AI-Native Music Discovery Companion
+NEXT_PUBLIC_APP_VERSION=1.0.0
+```
+
+**Deployment URL**: `https://ai-native-music-discovery-frontend.vercel.app`
+
+**Build Process**:
+1. Install dependencies: `npm install`
+2. Build application: `npm run build`
+3. Deploy to Vercel edge network
+4. Configure custom domain (optional)
+
+**Performance**:
+- Static site generation for optimal performance
+- Image optimization
+- Code splitting
+- Automatic prefetching
+
+### Backend Deployment (Render)
+
+**Platform**: Render
+
+**Configuration**: `phase4-backend-api/render.yaml`
+
+**Features**:
+- FastAPI backend with Uvicorn server
+- Automatic SSL certificates
+- Health monitoring
+- Auto-scaling
+- Log aggregation
+
+**Environment Variables**:
+```bash
+GROQ_API_KEY=<your_groq_api_key>
+LASTFM_API_KEY=<your_lastfm_api_key>
+LASTFM_SHARED_SECRET=<your_lastfm_secret>
+REVIEW_ENGINE_URL=https://ai-powered-review-discovery-engine.onrender.com
+DATABASE_URL=<render_postgresql_url>
+REDIS_HOST=<render_redis_host>
+REDIS_PORT=6379
+REDIS_PASSWORD=<render_redis_password>
+PORT=8005
+HOST=0.0.0.0
+CORS_ORIGINS=https://ai-native-music-discovery-frontend.vercel.app
+```
+
+**Deployment URL**: `https://ai-native-music-discovery-backend.onrender.com`
+
+**Build Process**:
+1. Install Python dependencies: `pip install -r requirements.txt`
+2. Start server: `python run.py`
+3. Health check: `/health` endpoint
+4. Auto-restart on failure
+
+**Performance**:
+- Asynchronous request handling
+- Connection pooling
+- Response caching
+- Rate limiting
+
+### Scheduler Deployment (GitHub Actions)
+
+**Platform**: GitHub Actions
+
+**Configuration**: `.github/workflows/weekly-scheduler.yml`
+
+**Features**:
+- Cron-based scheduling (Monday 10:00 AM IST)
+- Manual workflow trigger
+- Artifact storage for logs
+- Workflow summaries
+- Retry logic
+
+**Environment Variables**:
+```bash
+GROQ_API_KEY=<your_groq_api_key>
+USE_MOCKS=false
+SCHEDULER_ENABLED=true
+SCHEDULER_TIMEZONE=Asia/Kolkata
+LOG_DIR=./logs/scheduler
+LOG_LEVEL=INFO
+LOG_FORMAT=json
+```
+
+**Schedule**: Every Monday at 10:00 AM IST (4:30 AM UTC)
+
+**Workflow Steps**:
+1. Checkout repository
+2. Set up Python 3.11
+3. Install Phase 6 dependencies
+4. Execute weekly workflow
+5. Upload scheduler logs
+6. Generate workflow summary
+
+### External Services Integration
+
+**AI-Powered Review Discovery Engine**:
+- URL: `https://ai-powered-review-discovery-engine.onrender.com`
+- Purpose: Real-time review data and analysis
+- Integration: HTTP API calls
+- Endpoints:
+  - `/api/reviews` - Review insights
+  - `/api/insights/themes` - Theme clusters
+  - `/api/insights/segments` - User segments
+
+**Database Services**:
+- PostgreSQL (Render): Primary data storage
+- Redis (Render): Caching and session management
+
+### CORS Configuration
+
+**Backend CORS Origins**:
+```yaml
+cors_origins:
+  - "https://ai-native-music-discovery-frontend.vercel.app"
+  - "https://ai-native-music-discovery-frontend.vercel.app/*"
+  - "http://localhost:3000"  # Local development
+```
+
+**Security Headers**:
+```yaml
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+X-XSS-Protection: 1; mode=block
+```
+
+### Environment Management
+
+**Development**:
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:8005`
+- Environment: `.env` file in project root
+
+**Production**:
+- Frontend: `https://ai-native-music-discovery-frontend.vercel.app`
+- Backend: `https://ai-native-music-discovery-backend.onrender.com`
+- Environment: Platform-specific environment variables
+
+### Monitoring and Logging
+
+**Frontend (Vercel)**:
+- Real-time analytics
+- Performance metrics
+- Error tracking
+- Deployment logs
+
+**Backend (Render)**:
+- Health monitoring
+- Log aggregation
+- Metrics dashboard
+- Alert notifications
+
+**Scheduler (GitHub Actions)**:
+- Workflow execution logs
+- Artifact storage (30-day retention)
+- Workflow summaries
+- Status notifications
+
+### Security Considerations
+
+**API Keys**:
+- Stored in platform environment variables
+- Never committed to repository
+- Rotated regularly
+- Access restricted to authorized services
+
+**CORS**:
+- Strict origin validation
+- Production domains only
+- Wildcard subdomains allowed for Vercel
+
+**SSL/TLS**:
+- Automatic SSL certificates
+- HTTPS only in production
+- Secure cookie flags
+
+**Rate Limiting**:
+- 60 requests per minute
+- 1000 requests per hour
+- Per-user limits
+
+### Deployment Workflow
+
+**Initial Deployment**:
+1. Configure environment variables on each platform
+2. Connect GitHub repository to deployment platforms
+3. Deploy backend first (Render)
+4. Deploy frontend (Vercel)
+5. Update GitHub Actions secrets
+6. Test end-to-end integration
+
+**Continuous Deployment**:
+- Backend: Auto-deploy on push to main branch
+- Frontend: Auto-deploy on push to main branch
+- Scheduler: Runs weekly via GitHub Actions
+
+**Rollback Strategy**:
+- Vercel: Instant rollback to previous deployments
+- Render: Manual rollback to previous versions
+- GitHub Actions: Manual workflow re-run
+
+### Performance Optimization
+
+**Frontend**:
+- Static site generation
+- Image optimization
+- Code splitting
+- CDN caching
+- Prefetching
+
+**Backend**:
+- Asynchronous processing
+- Connection pooling
+- Response caching
+- Rate limiting
+- Health checks
+
+**Scheduler**:
+- Parallel execution
+- Error handling
+- Retry logic
+- Graceful degradation
+
+### Cost Management
+
+**Vercel (Frontend)**:
+- Free tier: 100GB bandwidth/month
+- Pro tier: $20/month (unlimited bandwidth)
+- Hobby tier: $0/month (limited features)
+
+**Render (Backend)**:
+- Free tier: 750 hours/month
+- Starter tier: $7/month (more resources)
+- Standard tier: $25/month (production)
+
+**GitHub Actions (Scheduler)**:
+- Free tier: 2000 minutes/month
+- Pro tier: $4/month (3000 minutes/month)
+
+**External Services**:
+- Render PostgreSQL: Free tier available
+- Render Redis: Free tier available
+- Review Engine: External service (free tier available)
+
+### Backup and Recovery
+
+**Database Backups**:
+- Automatic daily backups (Render)
+- Point-in-time recovery
+- Export functionality
+- Geographic redundancy
+
+**Application Backups**:
+- Git version control
+- Deployment snapshots
+- Configuration backups
+- Environment variable backups
+
+### Disaster Recovery
+
+**Failover Strategy**:
+- Multi-region deployment (future)
+- Load balancing (future)
+- Database replication (future)
+- CDN edge caching (current)
+
+**Recovery Procedures**:
+1. Identify failure point
+2. Restore from backup
+3. Redeploy affected services
+4. Verify functionality
+5. Monitor for issues
+
+---
+
 ## Future Enhancements
 
 ### Phase 7: Deployment

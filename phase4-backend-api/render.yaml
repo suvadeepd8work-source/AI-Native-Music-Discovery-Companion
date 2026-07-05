@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: ai-native-music-discovery-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python run.py
+    plan: free
+    region: oregon
+    runtime: python3.11
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11
+      - key: PORT
+        value: 8005
+      - key: GROQ_API_KEY
+        sync: false
+      - key: LASTFM_API_KEY
+        sync: false
+      - key: LASTFM_SHARED_SECRET
+        sync: false
+      - key: REVIEW_ENGINE_URL
+        value: https://ai-powered-review-discovery-engine.onrender.com
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        value: 6379
+      - key: REDIS_PASSWORD
+        sync: false
+    healthCheckPath: /health
