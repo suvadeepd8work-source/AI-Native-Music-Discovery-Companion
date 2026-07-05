@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 import structlog
 import yaml
+import aiohttp
 
 # Import schemas directly from the same directory
 import schemas
