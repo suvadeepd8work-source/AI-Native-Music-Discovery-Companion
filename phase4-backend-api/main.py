@@ -316,15 +316,18 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
         import aiohttp
         
         # Build search query based on user preferences
-        search_query = ""
+        # Combine genre, mood, and activity for varied results
+        search_parts = []
         if request.genres:
-            search_query = request.genres[0]
-        elif request.mood:
-            search_query = request.mood
-        else:
-            search_query = "popular"
+            search_parts.append(request.genres[0])
+        if request.mood:
+            search_parts.append(request.mood)
+        if request.activity:
+            search_parts.append(request.activity)
         
-        logger.info(f"Search query: '{search_query}'")
+        search_query = " ".join(search_parts) if search_parts else "popular"
+        
+        logger.info(f"Search query: '{search_query}' (from genres: {request.genres}, mood: {request.mood}, activity: {request.activity})")
         
         # Call LastFM API for track search
         lastfm_url = "http://ws.audioscrobbler.com/2.0/"
