@@ -444,11 +444,24 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                     community_reviews = []
                     
                     if review_engine_insights:
-                        explanation = f"Recommended based on your {request.mood or 'current'} mood and {request.activity or 'listening'} activity. "
-                        if review_engine_insights.get("insights"):
-                            explanation += review_engine_insights["insights"].get("recommendation_reason", "")
+                        # Review Engine returns {total, offset, limit, reviews}
+                        # Each review has: id, review_text, sentiment, category, rating, platform, barriers
                         if review_engine_insights.get("reviews"):
-                            community_reviews = review_engine_insights["reviews"][:3]
+                            # Map reviews to expected format
+                            for review in review_engine_insights["reviews"][:3]:
+                                community_reviews.append({
+                                    "text": review.get("review_text") or "Great track!",
+                                    "rating": review.get("rating", 4),
+                                    "author": f"User {review.get('id', 'Anonymous')}",
+                                    "sentiment": review.get("sentiment")
+                                })
+                        
+                        # Build explanation based on mood/activity since Review Engine doesn't provide insights
+                        explanation = f"Recommended based on your {request.mood or 'current'} mood and {request.activity or 'listening'} activity. "
+                        if community_reviews:
+                            explanation += f"Based on {len(community_reviews)} community reviews."
+                        else:
+                            explanation += "Popular choice in this genre."
                     
                     recommendations.append({
                         "track": {
