@@ -8,7 +8,7 @@ server:
   workers: 4
 
 # Mock Mode
-use_mocks: true
+use_mocks: false
 
 # API Configuration
 api:

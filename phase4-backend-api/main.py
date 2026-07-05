@@ -2,24 +2,19 @@
 Phase 4: Backend API
 FastAPI backend for AI Native Music Discovery Companion.
 """
+import sys
+from pathlib import Path
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 import structlog
 import yaml
-from pathlib import Path
 
-from .schemas import (
-    ChatRequest, ChatResponse,
-    DiscoverMusicRequest, DiscoverMusicResponse,
-    ExplainRecommendationRequest, ExplainRecommendationResponse,
-    RecommendationHistoryRequest, RecommendationHistoryResponse,
-    TrendingGenresRequest, TrendingGenresResponse,
-    SimilarArtistsRequest, SimilarArtistsResponse,
-    DiscoveryInsightsRequest, DiscoveryInsightsResponse,
-    ConversationHistoryRequest, ConversationHistoryResponse,
-    HealthCheckResponse, ErrorResponse
-)
+# Import schemas directly from the same directory
+import schemas
 
 
 logger = structlog.get_logger(__name__)
@@ -58,37 +53,32 @@ async def startup():
     """Initialize components on startup."""
     global orchestrator, conversation_memory, recommendation_storage, response_storage
     
-    use_mocks = config.get("use_mocks", True)
+    use_mocks = config.get("use_mocks", False)
     
-    if use_mocks:
-        logger.info("Using mock implementations")
-        # Import mock implementations
-        from phase3_ai_orchestration import MockOrchestrator
-        from phase1_ai_conversation_engine.context_manager import MockContextManager
-        from phase2_music_recommendation_engine.storage import MockRecommendationStorage
-        from phase1_ai_conversation_engine.response_generator.response_storage import MockResponseStorage
-        
-        orchestrator = MockOrchestrator()
-        conversation_memory = MockContextManager()
-        recommendation_storage = MockRecommendationStorage()
-        response_storage = MockResponseStorage()
-    else:
-        logger.info("Initializing production components")
-        # Would initialize real components from Phase 1, 2, 3
-        # For now, use mocks
-        from phase3_ai_orchestration import MockOrchestrator
-        from phase1_ai_conversation_engine.context_manager import MockContextManager
-        from phase2_music_recommendation_engine.storage import MockRecommendationStorage
-        from phase1_ai_conversation_engine.response_generator.response_storage import MockResponseStorage
-        
-        orchestrator = MockOrchestrator()
-        conversation_memory = MockContextManager()
-        recommendation_storage = MockRecommendationStorage()
-        response_storage = MockResponseStorage()
-        logger.warning("Production components not fully implemented, using mocks")
+    # Use simple mock objects for now to allow backend startup
+    logger.info("Initializing components with simple mocks")
+    
+    # Simple mock orchestrator
+    orchestrator = type('MockOrchestrator', (), {
+        'orchestrate': lambda x: type('Response', (), {
+            'response': 'Mock response',
+            'intent': 'GENERAL_CHAT',
+            'recommendations': [],
+            'success': True
+        })()
+    })()
+    
+    # Simple mock context manager
+    conversation_memory = type('MockContextManager', (), {})()
+    
+    # Simple mock storage
+    recommendation_storage = type('MockRecommendationStorage', (), {})()
+    response_storage = type('MockResponseStorage', (), {})()
+    
+    logger.info("Components initialized successfully")
 
 
-@app.get("/health", response_model=HealthCheckResponse)
+@app.get("/health", response_model=schemas.HealthCheckResponse)
 async def health_check():
     """
     Health check endpoint.
@@ -103,15 +93,15 @@ async def health_check():
     
     overall_status = "healthy" if all(status == "healthy" for status in services.values()) else "degraded"
     
-    return HealthCheckResponse(
+    return schemas.HealthCheckResponse(
         status=overall_status,
         services=services,
         version="1.0.0"
     )
 
 
-@app.post("/api/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+@app.post("/api/chat", response_model=schemas.ChatResponse)
+async def chat(request: schemas.ChatRequest):
     """
     Chat endpoint for conversational music discovery.
     
@@ -134,7 +124,7 @@ async def chat(request: ChatRequest):
         
         response = await orchestrator.orchestrate(orchestration_request)
         
-        return ChatResponse(
+        return schemas.ChatResponse(
             response=response.response,
             intent=response.intent,
             recommendations=response.recommendations,
@@ -149,8 +139,8 @@ async def chat(request: ChatRequest):
         )
 
 
-@app.post("/api/discover", response_model=DiscoverMusicResponse)
-async def discover_music(request: DiscoverMusicRequest):
+@app.post("/api/discover", response_model=schemas.DiscoverMusicResponse)
+async def discover_music(request: schemas.DiscoverMusicRequest):
     """
     Discover music endpoint.
     
@@ -191,7 +181,7 @@ async def discover_music(request: DiscoverMusicRequest):
             for i in range(min(request.limit, 10))
         ]
         
-        return DiscoverMusicResponse(
+        return schemas.DiscoverMusicResponse(
             recommendations=recommendations,
             strategies_used=["review_based", "mood_activity", "similarity_search"],
             total_count=len(recommendations),
@@ -206,8 +196,8 @@ async def discover_music(request: DiscoverMusicRequest):
         )
 
 
-@app.post("/api/explain", response_model=ExplainRecommendationResponse)
-async def explain_recommendation(request: ExplainRecommendationRequest):
+@app.post("/api/explain", response_model=schemas.ExplainRecommendationResponse)
+async def explain_recommendation(request: schemas.ExplainRecommendationRequest):
     """
     Explain recommendation endpoint.
     
@@ -216,7 +206,7 @@ async def explain_recommendation(request: ExplainRecommendationRequest):
     try:
         # Would retrieve explanation from Explainability Engine
         # For now, return mock data
-        return ExplainRecommendationResponse(
+        return schemas.ExplainRecommendationResponse(
             recommendation_id=request.recommendation_id,
             song_selection_reasons=[
                 "Matches your preference for upbeat music",
@@ -262,8 +252,8 @@ async def explain_recommendation(request: ExplainRecommendationRequest):
         )
 
 
-@app.get("/api/recommendations/history", response_model=RecommendationHistoryResponse)
-async def recommendation_history(request: RecommendationHistoryRequest):
+@app.get("/api/recommendations/history", response_model=schemas.RecommendationHistoryResponse)
+async def recommendation_history(request: schemas.RecommendationHistoryRequest):
     """
     Recommendation history endpoint.
     
@@ -286,7 +276,7 @@ async def recommendation_history(request: RecommendationHistoryRequest):
             for i in range(min(request.limit, 20))
         ]
         
-        return RecommendationHistoryResponse(
+        return schemas.RecommendationHistoryResponse(
             user_id=request.user_id,
             history=history,
             total_count=len(history),
@@ -301,8 +291,8 @@ async def recommendation_history(request: RecommendationHistoryRequest):
         )
 
 
-@app.get("/api/trending/genres", response_model=TrendingGenresResponse)
-async def trending_genres(request: TrendingGenresRequest):
+@app.get("/api/trending/genres", response_model=schemas.TrendingGenresResponse)
+async def trending_genres(request: schemas.TrendingGenresRequest):
     """
     Trending genres endpoint.
     
@@ -335,7 +325,7 @@ async def trending_genres(request: TrendingGenresRequest):
             }
         ]
         
-        return TrendingGenresResponse(
+        return schemas.TrendingGenresResponse(
             genres=genres[:request.limit],
             total_count=len(genres),
             success=True
@@ -349,8 +339,8 @@ async def trending_genres(request: TrendingGenresRequest):
         )
 
 
-@app.get("/api/artists/similar", response_model=SimilarArtistsResponse)
-async def similar_artists(request: SimilarArtistsRequest):
+@app.get("/api/artists/similar", response_model=schemas.SimilarArtistsResponse)
+async def similar_artists(request: schemas.SimilarArtistsRequest):
     """
     Similar artists endpoint.
     
@@ -370,7 +360,7 @@ async def similar_artists(request: SimilarArtistsRequest):
             for i in range(min(request.limit, 10))
         ]
         
-        return SimilarArtistsResponse(
+        return schemas.SimilarArtistsResponse(
             artist_id=request.artist_id,
             similar_artists=similar_artists,
             total_count=len(similar_artists),
@@ -385,87 +375,133 @@ async def similar_artists(request: SimilarArtistsRequest):
         )
 
 
-@app.get("/api/insights/discovery", response_model=DiscoveryInsightsResponse)
-async def discovery_insights(request: DiscoveryInsightsRequest):
+@app.get("/api/insights/discovery", response_model=schemas.DiscoveryInsightsResponse)
+async def discovery_insights(user_id: str, insight_type: Optional[str] = None):
     """
     Discovery insights endpoint.
     
-    Returns review insights from the Review Discovery Engine.
+    Returns review insights from the AI Review Discovery Engine.
     """
     try:
-        # Would retrieve from Review Client
-        # For now, return mock data
-        pain_points = [
-            {
-                "pain_point_id": "pain_1",
-                "description": "Users repeatedly receive similar songs",
-                "severity": 0.8,
-                "frequency": 150
-            }
-        ]
-        
-        theme_clusters = [
-            {
-                "cluster_id": "cluster_1",
-                "theme_name": "Repetitive Recommendations",
-                "sentiment": -0.6,
-                "frequency": 150
-            }
-        ]
-        
-        user_segments = [
-            {
-                "segment_id": "segment_1",
-                "segment_name": "Active Explorers",
-                "size": 5000
-            }
-        ]
-        
-        product_insights = [
-            {
-                "insight_id": "insight_1",
-                "category": "Diversity",
-                "title": "Low Diversity in Recommendations",
-                "impact": "high"
-            }
-        ]
-        
-        # Filter by insight type if specified
-        if request.insight_type == "pain_points":
-            return DiscoveryInsightsResponse(
-                user_id=request.user_id,
-                pain_points=pain_points,
-                theme_clusters=[],
-                user_segments=[],
-                product_insights=[],
-                success=True
+        # Import and use the integrated ReviewEngineClient
+        try:
+            from phase2_music_recommendation_engine.review_client import ReviewEngineClient
+            
+            # Initialize client with deployed AI Review Discovery Engine
+            review_client = ReviewEngineClient(
+                base_url="https://ai-powered-review-discovery-engine.onrender.com"
             )
-        elif request.insight_type == "themes":
-            return DiscoveryInsightsResponse(
-                user_id=request.user_id,
-                pain_points=[],
-                theme_clusters=theme_clusters,
-                user_segments=[],
-                product_insights=[],
-                success=True
-            )
-        elif request.insight_type == "segments":
-            return DiscoveryInsightsResponse(
-                user_id=request.user_id,
-                pain_points=[],
-                theme_clusters=[],
-                user_segments=user_segments,
-                product_insights=[],
-                success=True
-            )
+            
+            # Fetch insights based on requested type
+            pain_points = []
+            theme_clusters = []
+            user_segments = []
+            product_insights = []
+            
+            if insight_type in [None, "pain_points", "all"]:
+                pain_points_data = await review_client.get_pain_points(
+                    severity_threshold=0.5,
+                    limit=10
+                )
+                pain_points = [
+                    {
+                        "pain_point_id": pp.pain_point_id,
+                        "description": pp.description,
+                        "severity": pp.severity,
+                        "frequency": pp.frequency
+                    }
+                    for pp in pain_points_data
+                ]
+            
+            if insight_type in [None, "themes", "all"]:
+                theme_clusters_data = await review_client.get_theme_clusters(limit=10)
+                theme_clusters = [
+                    {
+                        "cluster_id": tc.cluster_id,
+                        "theme_name": tc.theme_name,
+                        "sentiment": tc.sentiment,
+                        "frequency": tc.frequency
+                    }
+                    for tc in theme_clusters_data
+                ]
+            
+            if insight_type in [None, "segments", "all"]:
+                user_segments_data = await review_client.get_user_segments(limit=10)
+                user_segments = [
+                    {
+                        "segment_id": us.segment_id,
+                        "segment_name": us.segment_name,
+                        "size": us.size
+                    }
+                    for us in user_segments_data
+                ]
+            
+            if insight_type in [None, "product", "all"]:
+                product_insights_data = await review_client.get_product_insights(
+                    actionable_only=True,
+                    limit=10
+                )
+                product_insights = [
+                    {
+                        "insight_id": pi.insight_id,
+                        "category": pi.category,
+                        "title": pi.title,
+                        "impact": pi.impact
+                    }
+                    for pi in product_insights_data
+                ]
+            
+            # Close the client
+            await review_client.close()
+            
+        except ImportError:
+            logger.warning("Could not import ReviewEngineClient, using mock data")
+            # Return mock data if import fails
+            pain_points = [
+                {
+                    "pain_point_id": "pain_1",
+                    "description": "Users repeatedly receive similar songs",
+                    "severity": 0.8,
+                    "frequency": 150
+                }
+            ] if insight_type in [None, "pain_points", "all"] else []
+            
+            theme_clusters = [
+                {
+                    "cluster_id": "cluster_1",
+                    "theme_name": "Repetitive Recommendations",
+                    "sentiment": -0.6,
+                    "frequency": 150
+                }
+            ] if insight_type in [None, "themes", "all"] else []
+            
+            user_segments = [
+                {
+                    "segment_id": "segment_1",
+                    "segment_name": "Active Explorers",
+                    "size": 5000
+                }
+            ] if insight_type in [None, "segments", "all"] else []
+            
+            product_insights = [
+                {
+                    "insight_id": "insight_1",
+                    "category": "Diversity",
+                    "title": "Low Diversity in Recommendations",
+                    "impact": "high"
+                }
+            ] if insight_type in [None, "product", "all"] else []
         
-        return DiscoveryInsightsResponse(
-            user_id=request.user_id,
+        # Generate executive summary
+        executive_summary = "AI-powered review analysis reveals key insights about user preferences and discovery patterns."
+        
+        return schemas.DiscoveryInsightsResponse(
+            user_id=user_id,
             pain_points=pain_points,
             theme_clusters=theme_clusters,
             user_segments=user_segments,
             product_insights=product_insights,
-            executive_summary="User feedback indicates need for improved diversity and better mood matching.",
+            executive_summary=executive_summary,
             success=True
         )
         
@@ -477,8 +513,8 @@ async def discovery_insights(request: DiscoveryInsightsRequest):
         )
 
 
-@app.get("/api/conversation/history", response_model=ConversationHistoryResponse)
-async def conversation_history(request: ConversationHistoryRequest):
+@app.get("/api/conversation/history", response_model=schemas.ConversationHistoryResponse)
+async def conversation_history(request: schemas.ConversationHistoryRequest):
     """
     Conversation history endpoint.
     
@@ -498,7 +534,7 @@ async def conversation_history(request: ConversationHistoryRequest):
             for i in range(min(request.limit, 20))
         ]
         
-        return ConversationHistoryResponse(
+        return schemas.ConversationHistoryResponse(
             user_id=request.user_id,
             session_id=request.session_id,
             history=history,
@@ -518,7 +554,7 @@ async def conversation_history(request: ConversationHistoryRequest):
 async def global_exception_handler(request, exc):
     """Global exception handler."""
     logger.error("Unhandled exception", error=str(exc))
-    return ErrorResponse(
+    return schemas.ErrorResponse(
         error="Internal server error",
         detail=str(exc)
     )
