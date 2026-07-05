@@ -5,7 +5,11 @@ import asyncio
 from typing import Optional, List
 import structlog
 import httpx
-from .schemas import ReviewInsight, ThemeCluster, PainPoint, UserSegment, ProductInsight, ExecutiveReport
+
+try:
+    from .schemas import ReviewInsight, ThemeCluster, PainPoint, UserSegment, ProductInsight, ExecutiveReport
+except ImportError:
+    from schemas import ReviewInsight, ThemeCluster, PainPoint, UserSegment, ProductInsight, ExecutiveReport
 
 
 logger = structlog.get_logger(__name__)
@@ -13,12 +17,13 @@ logger = structlog.get_logger(__name__)
 
 class ReviewEngineClient:
     """
-    Client for Review Discovery Engine API.
+    Client for AI-Powered Review Discovery Engine API.
+    Uses the deployed system at https://ai-powered-review-discovery-engine.onrender.com
     """
     
     def __init__(
         self,
-        base_url: str,
+        base_url: str = "https://ai-powered-review-discovery-engine.onrender.com",
         timeout: int = 10,
         max_retries: int = 3
     ):
@@ -62,7 +67,7 @@ class ReviewEngineClient:
         limit: int = 20
     ) -> List[ReviewInsight]:
         """
-        Get review insights for artists.
+        Get review insights for artists from AI review discovery system.
         
         Args:
             genres: Filter by genre tags
@@ -84,7 +89,7 @@ class ReviewEngineClient:
                 params["genres"] = ",".join(genres)
             
             response = await client.get(
-                f"{self.base_url}/review-insights",
+                f"{self.base_url}/api/reviews",
                 params=params
             )
             response.raise_for_status()
@@ -92,16 +97,22 @@ class ReviewEngineClient:
             data = response.json()
             insights = []
             
-            for insight_data in data.get("insights", []):
+            # Handle both list and dict responses
+            reviews_data = data if isinstance(data, list) else data.get("reviews", [])
+            
+            for review_data in reviews_data:
+                # Map review data to ReviewInsight schema with proper defaults
                 insight = ReviewInsight(
-                    artist_id=insight_data["artist_id"],
-                    artist_name=insight_data["artist_name"],
-                    review_sentiment=insight_data["review_sentiment"],
-                    review_count=insight_data["review_count"],
-                    genre_tags=insight_data.get("genre_tags", []),
-                    unique_descriptors=insight_data.get("unique_descriptors", []),
-                    discovery_score=insight_data["discovery_score"],
-                    last_updated=insight_data["last_updated"]
+                    artist_id=str(review_data.get("id", "")),
+                    artist_name=review_data.get("platform") or "Unknown Platform",
+                    review_sentiment=review_data.get("sentiment") or 0.5,
+                    review_count=1,
+                    genre_tags=[],
+                    unique_descriptors=review_data.get("barriers") or [],
+                    discovery_score=(review_data.get("rating") or 3) / 5.0,
+                    last_updated="2024-01-01T00:00:00Z",
+                    themes=[review_data.get("category")] if review_data.get("category") else [],
+                    pain_points=[]
                 )
                 insights.append(insight)
             
@@ -115,7 +126,7 @@ class ReviewEngineClient:
     
     async def get_artist_review_insight(self, artist_id: str) -> Optional[ReviewInsight]:
         """
-        Get review insight for a specific artist.
+        Get review insight for a specific artist from AI review discovery system.
         
         Args:
             artist_id: Spotify artist ID
@@ -127,7 +138,7 @@ class ReviewEngineClient:
             client = await self._get_client()
             
             response = await client.get(
-                f"{self.base_url}/review-insights/{artist_id}"
+                f"{self.base_url}/api/reviews/{artist_id}"
             )
             
             if response.status_code == 404:
@@ -144,7 +155,9 @@ class ReviewEngineClient:
                 genre_tags=data.get("genre_tags", []),
                 unique_descriptors=data.get("unique_descriptors", []),
                 discovery_score=data["discovery_score"],
-                last_updated=data["last_updated"]
+                last_updated=data["last_updated"],
+                themes=data.get("themes", []),
+                pain_points=data.get("pain_points", [])
             )
         
         try:
@@ -152,6 +165,194 @@ class ReviewEngineClient:
         except Exception as e:
             logger.error("Failed to get artist review insight", artist_id=artist_id, error=str(e))
             return None
+    
+    async def get_theme_clusters(
+        self,
+        limit: int = 20
+    ) -> List[ThemeCluster]:
+        """
+        Get theme clusters from AI review discovery system.
+        
+        Args:
+            limit: Maximum number of results
+            
+        Returns:
+            List of theme clusters
+        """
+        async def _get():
+            client = await self._get_client()
+            
+            params = {"limit": limit}
+            
+            response = await client.get(
+                f"{self.base_url}/api/insights/themes",
+                params=params
+            )
+            response.raise_for_status()
+            
+            data = response.json()
+            clusters = []
+            
+            # Handle list response directly
+            themes_data = data if isinstance(data, list) else data.get("themes", [])
+            
+            for theme_data in themes_data:
+                cluster = ThemeCluster(
+                    cluster_id=theme_data.get("theme_id", ""),
+                    theme_name=theme_data.get("title", ""),
+                    description=theme_data.get("description", ""),
+                    keywords=theme_data.get("representative_reviews", [])[:3],  # Use first 3 reviews as keywords
+                    sentiment=0.5,  # Default sentiment
+                    frequency=theme_data.get("review_count", 0),
+                    related_artists=[]
+                )
+                clusters.append(cluster)
+            
+            return clusters
+        
+        try:
+            return await self._execute_with_retry(_get)
+        except Exception as e:
+            logger.error("Failed to get theme clusters", error=str(e))
+            return []
+    
+    async def get_pain_points(
+        self,
+        severity_threshold: float = 0.5,
+        limit: int = 20
+    ) -> List[PainPoint]:
+        """
+        Get pain points from AI review discovery system.
+        Note: This endpoint is not available in the deployed system, returns empty list.
+        
+        Args:
+            severity_threshold: Minimum severity score
+            limit: Maximum number of results
+            
+        Returns:
+            List of pain points
+        """
+        logger.warning("Pain points endpoint not available in deployed system")
+        return []
+    
+    async def get_user_segments(
+        self,
+        limit: int = 20
+    ) -> List[UserSegment]:
+        """
+        Get user segments from AI review discovery system.
+        
+        Args:
+            limit: Maximum number of results
+            
+        Returns:
+            List of user segments
+        """
+        async def _get():
+            client = await self._get_client()
+            
+            params = {"limit": limit}
+            
+            response = await client.get(
+                f"{self.base_url}/api/insights/segments",
+                params=params
+            )
+            response.raise_for_status()
+            
+            data = response.json()
+            segments = []
+            
+            # Handle list response directly
+            segments_data = data if isinstance(data, list) else data.get("segments", [])
+            
+            for segment_data in segments_data:
+                segment = UserSegment(
+                    segment_id=segment_data.get("segment_id", ""),
+                    segment_name=segment_data.get("label", ""),
+                    description=", ".join(segment_data.get("traits", [])),
+                    size=segment_data.get("review_count", 0),
+                    preferences={},
+                    behaviors=segment_data.get("listening_behaviors", []),
+                    pain_points=segment_data.get("challenges", [])
+                )
+                segments.append(segment)
+            
+            return segments
+        
+        try:
+            return await self._execute_with_retry(_get)
+        except Exception as e:
+            logger.error("Failed to get user segments", error=str(e))
+            return []
+    
+    async def get_user_segment(self, segment_id: str) -> Optional[UserSegment]:
+        """
+        Get a specific user segment from AI review discovery system.
+        
+        Args:
+            segment_id: User segment ID
+            
+        Returns:
+            User segment or None if not found
+        """
+        async def _get():
+            client = await self._get_client()
+            
+            response = await client.get(
+                f"{self.base_url}/api/insights/segments/{segment_id}"
+            )
+            
+            if response.status_code == 404:
+                return None
+            
+            response.raise_for_status()
+            
+            data = response.json()
+            return UserSegment(
+                segment_id=data.get("segment_id", ""),
+                segment_name=data.get("label", ""),
+                description=", ".join(data.get("traits", [])),
+                size=data.get("review_count", 0),
+                preferences={},
+                behaviors=data.get("listening_behaviors", []),
+                pain_points=data.get("challenges", [])
+            )
+        
+        try:
+            return await self._execute_with_retry(_get)
+        except Exception as e:
+            logger.error("Failed to get user segment", segment_id=segment_id, error=str(e))
+            return None
+    
+    async def get_product_insights(
+        self,
+        actionable_only: bool = False,
+        limit: int = 20
+    ) -> List[ProductInsight]:
+        """
+        Get product insights from AI review discovery system.
+        Note: This endpoint is not available in the deployed system, returns empty list.
+        
+        Args:
+            actionable_only: Filter for actionable insights only
+            limit: Maximum number of results
+            
+        Returns:
+            List of product insights
+        """
+        logger.warning("Product insights endpoint not available in deployed system")
+        return []
+    
+    async def get_executive_report(self) -> Optional[ExecutiveReport]:
+        """
+        Get the executive report summary from AI review discovery system.
+        Note: This endpoint is not available in the deployed system, returns None.
+        
+        Returns:
+            Executive report or None if not available
+        """
+        logger.warning("Executive report endpoint not available in deployed system")
+        return None
     
     async def close(self) -> None:
         """Close the HTTP client."""
@@ -173,7 +374,9 @@ class MockReviewEngineClient:
                 genre_tags=["synthwave", "electronic", "retro"],
                 unique_descriptors=["nostalgic", "cinematic", "atmospheric"],
                 discovery_score=0.75,
-                last_updated="2024-01-15T00:00:00Z"
+                last_updated="2024-01-15T00:00:00Z",
+                themes=["retro aesthetics", "cinematic quality", "nostalgia"],
+                pain_points=["limited mainstream appeal", "niche genre"]
             ),
             "artist_2": ReviewInsight(
                 artist_id="artist_2",
@@ -183,7 +386,9 @@ class MockReviewEngineClient:
                 genre_tags=["synthwave", "electronic", "darkwave"],
                 unique_descriptors=["aggressive", "cinematic", "powerful"],
                 discovery_score=0.70,
-                last_updated="2024-01-10T00:00:00Z"
+                last_updated="2024-01-10T00:00:00Z",
+                themes=["dark atmosphere", "cinematic intensity", "aggressive sound"],
+                pain_points=["too intense for casual listeners", "niche appeal"]
             ),
             "artist_3": ReviewInsight(
                 artist_id="artist_3",
@@ -193,7 +398,9 @@ class MockReviewEngineClient:
                 genre_tags=["synthwave", "electronic", "cyberpunk"],
                 unique_descriptors=["futuristic", "immersive", "energetic"],
                 discovery_score=0.72,
-                last_updated="2024-01-12T00:00:00Z"
+                last_updated="2024-01-12T00:00:00Z",
+                themes=["cyberpunk aesthetics", "futuristic sound", "immersive experience"],
+                pain_points=["niche genre", "limited mainstream recognition"]
             ),
             "artist_4": ReviewInsight(
                 artist_id="artist_4",
@@ -203,7 +410,9 @@ class MockReviewEngineClient:
                 genre_tags=["synthwave", "darkwave", "electronic"],
                 unique_descriptors=["dark", "intense", "atmospheric"],
                 discovery_score=0.68,
-                last_updated="2024-01-08T00:00:00Z"
+                last_updated="2024-01-08T00:00:00Z",
+                themes=["dark atmosphere", "intense soundscapes", "atmospheric depth"],
+                pain_points=["too dark for some listeners", "niche appeal"]
             ),
             "artist_5": ReviewInsight(
                 artist_id="artist_5",
@@ -213,7 +422,9 @@ class MockReviewEngineClient:
                 genre_tags=["synthwave", "dreamwave", "electronic"],
                 unique_descriptors=["dreamy", "emotional", "nostalgic"],
                 discovery_score=0.78,
-                last_updated="2024-01-14T00:00:00Z"
+                last_updated="2024-01-14T00:00:00Z",
+                themes=["dreamy atmosphere", "emotional depth", "nostalgic quality"],
+                pain_points=["slow tempo", "niche genre"]
             )
         }
         
