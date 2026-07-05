@@ -424,6 +424,32 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                 for track in tracks[:request.limit]:
                     logger.info(f"Processing track: {track.get('name', 'Unknown')}")
                     
+                    # Try to get track info with audio preview from LastFM
+                    audio_preview_url = None
+                    try:
+                        track_info_params = {
+                            "method": "track.getInfo",
+                            "api_key": lastfm_api_key,
+                            "artist": track.get("artist", ""),
+                            "track": track.get("name", ""),
+                            "format": "json"
+                        }
+                        async with session.get(lastfm_url, params=track_info_params) as track_info_response:
+                            if track_info_response.status == 200:
+                                track_info_data = await track_info_response.json()
+                                if "track" in track_info_data:
+                                    track_info = track_info_data["track"]
+                                    if "album" in track_info and "image" in track_info["album"]:
+                                        # Use largest image for album art
+                                        images = track_info["album"]["image"]
+                                        if images:
+                                            for img in images:
+                                                if img.get("size") == "extralarge":
+                                                    album_art_url = img.get("#text")
+                                                    break
+                    except Exception as track_info_error:
+                        logger.warning(f"Failed to fetch track info: {track_info_error}")
+                    
                     # Build explanation with Review Engine insights if available
                     explanation = f"Found via LastFM search for '{search_query}'"
                     community_reviews = []
@@ -443,7 +469,8 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                             "album_name": track.get("album", "Unknown Album"),
                             "duration_ms": 180000,
                             "popularity": int(track.get("listeners", 0)) if track.get("listeners") else 50,
-                            "album_art_url": f"https://picsum.photos/seed/{track.get('name', 'default')}/300/300"
+                            "album_art_url": album_art_url if 'album_art_url' in locals() else f"https://picsum.photos/seed/{track.get('name', 'default')}/300/300",
+                            "audio_preview_url": audio_preview_url
                         },
                         "confidence": 0.85,
                         "explanation": explanation,

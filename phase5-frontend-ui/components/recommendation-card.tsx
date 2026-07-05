@@ -1,4 +1,4 @@
-import { Play, Heart, MoreHorizontal, MessageSquare, Star } from "lucide-react"
+import { Play, Heart, MoreHorizontal, MessageSquare, Star, Pause } from "lucide-react"
 import { useState } from "react"
 
 interface RecommendationCardProps {
@@ -9,6 +9,7 @@ interface RecommendationCardProps {
     duration_ms?: number
     popularity?: number
     album_art_url?: string
+    audio_preview_url?: string
   }
   confidence: number
   explanation?: string
@@ -28,6 +29,7 @@ export function RecommendationCard({
   const [imageError, setImageError] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
   const [showReviews, setShowReviews] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
 
   const handleImageError = () => {
     setImageError(true)
@@ -35,6 +37,11 @@ export function RecommendationCard({
 
   const handleImageLoad = () => {
     setImageLoaded(true)
+  }
+
+  const togglePlay = () => {
+    setIsPlaying(!isPlaying)
+    onPlay?.()
   }
 
   return (
@@ -67,10 +74,10 @@ export function RecommendationCard({
         )}
         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
           <button
-            onClick={onPlay}
+            onClick={togglePlay}
             className="p-4 bg-[#1DB954] text-white rounded-full hover:bg-[#1ed760] transition-all transform hover:scale-110 shadow-lg"
           >
-            <Play className="h-6 w-6" />
+            {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
           </button>
           <button
             onClick={onSave}
@@ -80,6 +87,17 @@ export function RecommendationCard({
           </button>
         </div>
       </div>
+      {track.audio_preview_url && isPlaying && (
+        <div className="bg-[#181818] p-3">
+          <audio
+            src={track.audio_preview_url}
+            autoPlay
+            onEnded={() => setIsPlaying(false)}
+            controls
+            className="w-full h-8"
+          />
+        </div>
+      )}
       <div className="p-4 bg-[#282828]">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
