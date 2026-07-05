@@ -312,9 +312,6 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
         
         logger.info(f"LastFM API Key exists: {lastfm_api_key[:10]}...")
         
-        # Use LastFM API to fetch tracks
-        import aiohttp
-        
         # Build search query based on user preferences
         # Combine genre, mood, and activity for varied results
         search_parts = []
@@ -331,40 +328,6 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
         
         # Call LastFM API for track search
         lastfm_url = "http://ws.audioscrobbler.com/2.0/"
-        
-        if not lastfm_api_key:
-            logger.warning("LASTFM_API_KEY not set, using mock data")
-            # Return mock recommendations when API key is missing
-            mock_recommendations = []
-            for i in range(min(request.limit or 8, 8)):
-                mock_recommendations.append({
-                    "track": {
-                        "track_id": f"mock_track_{i}",
-                        "name": f"Mock Track {i+1}",
-                        "artist_name": f"Mock Artist {i+1}",
-                        "album_name": f"Mock Album {i+1}",
-                        "duration_ms": 180000,
-                        "popularity": 50 + (i * 5),
-                        "album_art_url": f"https://picsum.photos/seed/mock{i}/300/300",
-                        "audio_preview_url": None,
-                        "mood": request.mood or "Unknown",
-                        "energy": 5,
-                        "context": request.activity or "General listening",
-                        "listener_sentiment": "Growing",
-                        "similar_artists": [f"Mock Artist {i+1}"],
-                        "genre": request.genres[0] if request.genres and len(request.genres) > 0 else "Mixed"
-                    },
-                    "confidence": 0.85,
-                    "explanation": f"Mock recommendation for {request.mood or 'general'} mood",
-                    "community_reviews": []
-                })
-            
-            return schemas.DiscoverMusicResponse(
-                recommendations=mock_recommendations,
-                strategies_used=["mock_data"],
-                total_count=len(mock_recommendations),
-                success=True
-            )
         
         params = {
             "method": "track.search",
