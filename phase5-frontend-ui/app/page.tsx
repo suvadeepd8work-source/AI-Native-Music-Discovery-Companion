@@ -26,7 +26,7 @@ export default function Home() {
         activity: activity || undefined,
         genres: genres ? genres.split(",").map(g => g.trim()) : [],
         discovery_preference: "balanced",
-        limit: 50,
+        limit: 40,
       })
       setResults(result)
     } catch (error) {

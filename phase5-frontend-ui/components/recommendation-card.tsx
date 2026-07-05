@@ -16,6 +16,9 @@ interface RecommendationCardProps {
   community_reviews?: any[]
   onPlay?: () => void
   onSave?: () => void
+  user_theme?: string
+  user_segment?: string
+  key_trait?: string
 }
 
 export function RecommendationCard({
@@ -25,6 +28,9 @@ export function RecommendationCard({
   community_reviews,
   onPlay,
   onSave,
+  user_theme,
+  user_segment,
+  key_trait,
 }: RecommendationCardProps) {
   const [imageError, setImageError] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
@@ -122,6 +128,27 @@ export function RecommendationCard({
           <p className="text-xs text-gray-300 line-clamp-3 leading-relaxed">
             <span className="text-[#1DB954] font-semibold">AI says:</span> {explanation || "Recommended based on your music preferences"}
           </p>
+          {(user_theme || user_segment || key_trait) && (
+            <div className="mt-2 pt-2 border-t border-gray-600">
+              <div className="flex flex-wrap gap-2">
+                {user_theme && (
+                  <span className="text-xs bg-[#1DB954]/20 text-[#1DB954] px-2 py-1 rounded-full">
+                    Theme: {user_theme}
+                  </span>
+                )}
+                {user_segment && (
+                  <span className="text-xs bg-[#1DB954]/20 text-[#1DB954] px-2 py-1 rounded-full">
+                    Segment: {user_segment}
+                  </span>
+                )}
+                {key_trait && (
+                  <span className="text-xs bg-[#1DB954]/20 text-[#1DB954] px-2 py-1 rounded-full">
+                    Trait: {key_trait}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
         {community_reviews && community_reviews.length > 0 && (
           <div className="mt-4">

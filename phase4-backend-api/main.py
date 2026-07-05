@@ -439,6 +439,33 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                 for track in tracks[:request.limit]:
                     logger.info(f"Processing track: {track.get('name', 'Unknown')}")
                     
+                    # Get detailed track info for duration and album name
+                    track_duration = 180000  # default 3 minutes
+                    track_album = track.get("album", "Unknown Album")
+                    
+                    try:
+                        track_info_params = {
+                            "method": "track.getInfo",
+                            "api_key": lastfm_api_key,
+                            "track": track.get("name", ""),
+                            "artist": track.get("artist", ""),
+                            "format": "json"
+                        }
+                        async with session.get(lastfm_url, params=track_info_params) as track_info_response:
+                            if track_info_response.status == 200:
+                                track_info_data = await track_info_response.json()
+                                if "track" in track_info_data:
+                                    track_info = track_info_data["track"]
+                                    # Get duration in milliseconds
+                                    if "duration" in track_info and track_info["duration"]:
+                                        track_duration = int(track_info["duration"])
+                                    # Get album name
+                                    if "album" in track_info and track_info["album"]:
+                                        track_album = track_info["album"].get("name", track_album)
+                                    logger.info(f"Track info fetched: duration={track_duration}ms, album={track_album}")
+                    except Exception as track_info_error:
+                        logger.warning(f"Failed to fetch track info: {track_info_error}")
+                    
                     # Build explanation with Review Engine insights if available
                     explanation = f"Found via LastFM search for '{search_query}'"
                     community_reviews = []
@@ -457,9 +484,9 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                                 })
                         
                         # Build explanation based on mood/activity since Review Engine doesn't provide insights
-                        explanation = f"Recommended based on your {request.mood or 'current'} mood and {request.activity or 'listening'} activity. "
+                        explanation = f"AI recommends this because it matches your {request.mood or 'current'} mood and {request.activity or 'listening'} activity. "
                         if community_reviews:
-                            explanation += f"Based on {len(community_reviews)} community reviews."
+                            explanation += f"Based on {len(community_reviews)} community reviews with average rating."
                         else:
                             explanation += "Popular choice in this genre."
                     
@@ -468,8 +495,8 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                             "track_id": track.get("mbid", f"track_{track.get('name', '')}"),
                             "name": track.get("name", "Unknown Track"),
                             "artist_name": track.get("artist", "Unknown Artist"),
-                            "album_name": track.get("album", "Unknown Album"),
-                            "duration_ms": 180000,
+                            "album_name": track_album,
+                            "duration_ms": track_duration,
                             "popularity": int(track.get("listeners", 0)) if track.get("listeners") else 50,
                             "album_art_url": f"https://picsum.photos/seed/{track.get('name', 'default')}/300/300",
                             "audio_preview_url": None
