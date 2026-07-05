@@ -46,12 +46,13 @@ orchestrator = None
 conversation_memory = None
 recommendation_storage = None
 response_storage = None
+lastfm_api_key = None
 
 
 @app.on_event("startup")
 async def startup():
     """Initialize components on startup with real Review Engine integration."""
-    global orchestrator, conversation_memory, recommendation_storage, response_storage
+    global orchestrator, conversation_memory, recommendation_storage, response_storage, lastfm_api_key
     
     logger.info("Initializing backend with real Review Engine integration")
     
