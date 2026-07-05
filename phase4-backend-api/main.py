@@ -293,11 +293,22 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
         recommendations = []
         strategies_used = ["lastfm_api"]
         
+        logger.info(f"=== DISCOVER REQUEST ===")
+        logger.info(f"User ID: {request.user_id}")
+        logger.info(f"Mood: {request.mood}")
+        logger.info(f"Activity: {request.activity}")
+        logger.info(f"Genres: {request.genres}")
+        logger.info(f"Artists: {request.artists}")
+        logger.info(f"Limit: {request.limit}")
+        
         if not lastfm_api_key:
+            logger.error("LASTFM_API_KEY not configured")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="LastFM API key not configured"
+                detail="LastFM API key not configured. Please add LASTFM_API_KEY to environment variables."
             )
+        
+        logger.info(f"LastFM API Key exists: {lastfm_api_key[:10]}...")
         
         # Use LastFM API to fetch tracks
         import aiohttp
@@ -311,7 +322,7 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
         else:
             search_query = "popular"
         
-        logger.info(f"Searching LastFM for: {search_query}")
+        logger.info(f"Search query: '{search_query}'")
         
         # Call LastFM API for track search
         lastfm_url = "http://ws.audioscrobbler.com/2.0/"
@@ -323,30 +334,60 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
             "limit": request.limit or 10
         }
         
+        logger.info(f"LastFM URL: {lastfm_url}")
+        logger.info(f"Request params: {params}")
+        
         async with aiohttp.ClientSession() as session:
             async with session.get(lastfm_url, params=params) as response:
                 logger.info(f"LastFM API response status: {response.status}")
+                logger.info(f"Response headers: {dict(response.headers)}")
+                
+                response_text = await response.text()
+                logger.info(f"Response body: {response_text[:500]}...")
                 
                 if response.status != 200:
+                    logger.error(f"LastFM API returned non-200 status: {response.status}")
+                    logger.error(f"Response body: {response_text}")
                     raise HTTPException(
                         status_code=status.HTTP_502_BAD_GATEWAY,
-                        detail=f"LastFM API returned status {response.status}"
+                        detail=f"LastFM API returned status {response.status}: {response_text}"
                     )
                 
-                data = await response.json()
-                logger.info(f"LastFM API response data keys: {data.keys()}")
-                
-                if "results" not in data or "trackmatches" not in data["results"]:
+                try:
+                    data = await response.json()
+                except Exception as json_error:
+                    logger.error(f"Failed to parse JSON response: {json_error}")
+                    logger.error(f"Response text: {response_text}")
                     raise HTTPException(
                         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail="Invalid response from LastFM API"
+                        detail=f"Invalid JSON response from LastFM: {str(json_error)}"
+                    )
+                
+                logger.info(f"LastFM API response data keys: {data.keys()}")
+                logger.info(f"Full response data: {data}")
+                
+                if "results" not in data:
+                    logger.error(f"'results' key not found in response. Keys: {data.keys()}")
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Invalid response from LastFM API - missing 'results' key"
+                    )
+                
+                if "trackmatches" not in data["results"]:
+                    logger.error(f"'trackmatches' key not found in results. Keys: {data['results'].keys()}")
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Invalid response from LastFM API - missing 'trackmatches' key"
                     )
                 
                 tracks = data["results"]["trackmatches"]["track"]
+                logger.info(f"Tracks data type: {type(tracks)}")
+                
                 if not isinstance(tracks, list):
                     tracks = [tracks]
                 
                 if not tracks:
+                    logger.error(f"No tracks found for search query: '{search_query}'")
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,
                         detail=f"No tracks found for search query: '{search_query}'"
@@ -355,6 +396,7 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                 logger.info(f"Found {len(tracks)} tracks from LastFM")
                 
                 for track in tracks[:request.limit]:
+                    logger.info(f"Processing track: {track.get('name', 'Unknown')}")
                     recommendations.append({
                         "track": {
                             "track_id": track.get("mbid", f"track_{track.get('name', '')}"),
@@ -370,6 +412,8 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                     })
                 strategies_used.append("lastfm_search")
         
+        logger.info(f"Returning {len(recommendations)} recommendations")
+        
         return schemas.DiscoverMusicResponse(
             recommendations=recommendations,
             strategies_used=strategies_used,
@@ -380,7 +424,7 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Discover endpoint failed", error=str(e), exc_info=True)
+        logger.error("=== DISCOVER ENDPOINT FAILED ===", error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch music data: {str(e)}"
