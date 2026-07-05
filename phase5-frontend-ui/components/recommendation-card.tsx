@@ -1,4 +1,4 @@
-import { Play, Heart, MoreHorizontal, MessageSquare, Star, Pause } from "lucide-react"
+import { Play, Heart, MoreHorizontal, MessageSquare, Star, Pause, Zap, Music, TrendingUp, Users } from "lucide-react"
 import { useState } from "react"
 
 interface RecommendationCardProps {
@@ -10,6 +10,13 @@ interface RecommendationCardProps {
     popularity?: number
     album_art_url?: string
     audio_preview_url?: string
+    mood?: string
+    energy?: number
+    context?: string
+    listener_sentiment?: string
+    similar_artists?: string[]
+    genre?: string
+    year?: number
   }
   confidence: number
   explanation?: string
@@ -124,31 +131,84 @@ export function RecommendationCard({
             </span>
           )}
         </div>
-        <div className="mt-4 p-3 bg-[#404040] rounded-lg">
-          <p className="text-xs text-gray-300 line-clamp-3 leading-relaxed">
-            <span className="text-[#1DB954] font-semibold">AI says:</span> {explanation || "Recommended based on your music preferences"}
-          </p>
-          {(user_theme || user_segment || key_trait) && (
-            <div className="mt-2 pt-2 border-t border-gray-600">
-              <div className="flex flex-wrap gap-2">
-                {user_theme && (
-                  <span className="text-xs bg-[#1DB954]/20 text-[#1DB954] px-2 py-1 rounded-full">
-                    Theme: {user_theme}
-                  </span>
-                )}
-                {user_segment && (
-                  <span className="text-xs bg-[#1DB954]/20 text-[#1DB954] px-2 py-1 rounded-full">
-                    Segment: {user_segment}
-                  </span>
-                )}
-                {key_trait && (
-                  <span className="text-xs bg-[#1DB954]/20 text-[#1DB954] px-2 py-1 rounded-full">
-                    Trait: {key_trait}
-                  </span>
-                )}
+        {/* Rich Metadata Section */}
+        <div className="mt-4 space-y-3">
+          {/* Mood & Energy */}
+          <div className="flex items-center gap-3">
+            {track.mood && (
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-[#404040] rounded-full">
+                <Zap className="h-3 w-3 text-[#1DB954]" />
+                <span className="text-xs text-gray-300">{track.mood}</span>
               </div>
+            )}
+            {track.energy && (
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-[#404040] rounded-full">
+                <TrendingUp className="h-3 w-3 text-[#1DB954]" />
+                <span className="text-xs text-gray-300">Energy: {track.energy}/10</span>
+              </div>
+            )}
+            {track.genre && (
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-[#404040] rounded-full">
+                <Music className="h-3 w-3 text-[#1DB954]" />
+                <span className="text-xs text-gray-300">{track.genre}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Context & Listener Sentiment */}
+          {(track.context || track.listener_sentiment) && (
+            <div className="flex flex-wrap gap-2">
+              {track.context && (
+                <div className="px-2 py-1 bg-[#1DB954]/10 border border-[#1DB954]/30 rounded-full">
+                  <span className="text-xs text-[#1DB954]">{track.context}</span>
+                </div>
+              )}
+              {track.listener_sentiment && (
+                <div className="flex items-center gap-1 px-2 py-1 bg-[#404040] rounded-full">
+                  <Users className="h-3 w-3 text-gray-400" />
+                  <span className="text-xs text-gray-300">{track.listener_sentiment}</span>
+                </div>
+              )}
             </div>
           )}
+
+          {/* Similar Artists */}
+          {track.similar_artists && track.similar_artists.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              <span className="text-xs text-gray-500">Similar:</span>
+              {track.similar_artists.slice(0, 3).map((artist, idx) => (
+                <span key={idx} className="text-xs text-gray-400">{artist}</span>
+              ))}
+            </div>
+          )}
+
+          {/* AI Explanation */}
+          <div className="p-3 bg-[#404040] rounded-lg">
+            <p className="text-xs text-gray-300 line-clamp-3 leading-relaxed">
+              <span className="text-[#1DB954] font-semibold">AI says:</span> {explanation || "Recommended based on your music preferences"}
+            </p>
+            {(user_theme || user_segment || key_trait) && (
+              <div className="mt-2 pt-2 border-t border-gray-600">
+                <div className="flex flex-wrap gap-2">
+                  {user_theme && (
+                    <span className="text-xs bg-[#1DB954]/20 text-[#1DB954] px-2 py-1 rounded-full">
+                      Theme: {user_theme}
+                    </span>
+                  )}
+                  {user_segment && (
+                    <span className="text-xs bg-[#1DB954]/20 text-[#1DB954] px-2 py-1 rounded-full">
+                      Segment: {user_segment}
+                    </span>
+                  )}
+                  {key_trait && (
+                    <span className="text-xs bg-[#1DB954]/20 text-[#1DB954] px-2 py-1 rounded-full">
+                      Trait: {key_trait}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         {community_reviews && community_reviews.length > 0 && (
           <div className="mt-4">

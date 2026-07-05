@@ -493,6 +493,14 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                         else:
                             explanation += "Popular choice in this genre."
                     
+                    # Generate rich metadata based on track info and user preferences
+                    track_mood = request.mood or "Unknown"
+                    track_energy = min(10, max(1, int(track.get("listeners", 50) / 1000))) if track.get("listeners") else 5
+                    track_context = request.activity or "General listening"
+                    track_listener_sentiment = "Positive" if track.get("listeners", 0) > 10000 else "Growing"
+                    track_genre = request.genres[0] if request.genres else "Mixed"
+                    track_similar_artists = [track.get("artist", "Unknown Artist")]
+                    
                     recommendations.append({
                         "track": {
                             "track_id": track.get("mbid", f"track_{track.get('name', '')}"),
@@ -502,7 +510,13 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                             "duration_ms": track_duration,
                             "popularity": int(track.get("listeners", 0)) if track.get("listeners") else 50,
                             "album_art_url": f"https://picsum.photos/seed/{track.get('name', 'default')}/300/300",
-                            "audio_preview_url": None
+                            "audio_preview_url": None,
+                            "mood": track_mood,
+                            "energy": track_energy,
+                            "context": track_context,
+                            "listener_sentiment": track_listener_sentiment,
+                            "similar_artists": track_similar_artists,
+                            "genre": track_genre
                         },
                         "confidence": 0.85,
                         "explanation": explanation,
