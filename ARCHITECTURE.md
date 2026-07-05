@@ -4468,6 +4468,394 @@ Phase 6 is completely independent:
 
 ---
 
+## Phase 6: Scheduler - Automated Workflow Execution
+
+### Overview
+
+Phase 6 provides automated weekly workflow execution for the AI-Native Music Discovery Companion. The scheduler runs every Monday at 10:00 AM IST to:
+
+1. Download latest reviews from external music review sources
+2. Generate AI-powered insights from downloaded reviews
+3. Update frontend with fresh data and insights
+4. Execute complete workflow across all phases
+5. Log all execution details for monitoring and debugging
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Phase 6: Scheduler                            │
+│                  (Automated Workflow Engine)                     │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │
+                            │ Weekly Execution (Monday 10:00 AM IST)
+                            │
+        ┌───────────────────┼───────────────────┐
+        │                   │                   │
+        ▼                   ▼                   ▼
+┌───────────────┐  ┌───────────────┐  ┌───────────────┐
+│  Review       │  │  Insight     │  │  Frontend     │
+│  Downloader   │  │  Generator   │  │  Updater      │
+└───────────────┘  └───────────────┘  └───────────────┘
+        │                   │                   │
+        └───────────────────┼───────────────────┘
+                            │
+                            ▼
+                   ┌───────────────┐
+                   │  Workflow     │
+                   │  Executor    │
+                   └───────────────┘
+                            │
+                            ▼
+                   ┌───────────────┐
+                   │  Scheduler    │
+                   │  Logger       │
+                   └───────────────┘
+```
+
+### Components
+
+#### 6.1 MusicDiscoveryScheduler
+
+**Function**: Main scheduler that manages automated workflow execution
+
+**Key Features**:
+- Cron-based scheduling (Monday 10:00 AM IST)
+- AsyncIO-based execution
+- Job persistence and recovery
+- Graceful shutdown
+- Manual workflow triggering
+
+**Configuration**:
+```yaml
+scheduler:
+  enabled: true
+  timezone: "Asia/Kolkata"
+  day_of_week: "mon"
+  hour: 10
+  minute: 0
+```
+
+**API Methods**:
+```python
+scheduler.start()                    # Start scheduler
+scheduler.stop()                     # Stop scheduler
+scheduler.execute_manual_workflow() # Manual trigger
+scheduler.get_next_run_time()       # Get next scheduled run
+scheduler.get_job_status()           # Get scheduler status
+```
+
+#### 6.2 ReviewDownloader
+
+**Function**: Downloads latest reviews from external music review sources
+
+**Supported Sources**:
+- Pitchfork
+- Rolling Stone
+- NME (New Musical Express)
+- AllMusic
+
+**Download Process**:
+1. Parallel download from all sources
+2. Rate limiting and timeout handling
+3. Error handling and retry logic
+4. Statistics collection
+
+**Configuration**:
+```yaml
+review_sources:
+  - pitchfork
+  - rolling_stone
+  - nme
+  - allmusic
+
+review_download:
+  api_timeout: 30
+  max_reviews_per_source: 100
+```
+
+**Output Statistics**:
+```python
+{
+    "status": "completed",
+    "total_reviews": 200,
+    "sources_processed": 4,
+    "source_stats": {
+        "pitchfork": {"status": "success", "reviews_downloaded": 50},
+        "rolling_stone": {"status": "success", "reviews_downloaded": 50},
+        "nme": {"status": "success", "reviews_downloaded": 50},
+        "allmusic": {"status": "success", "reviews_downloaded": 50}
+    },
+    "execution_time_seconds": 2.5
+}
+```
+
+#### 6.3 InsightGenerator
+
+**Function**: Generates AI-powered insights from downloaded reviews using Groq LLM
+
+**Insight Types**:
+- Pain Points: User frustrations and complaints
+- Theme Clusters: Common themes in reviews
+- User Segments: User behavior patterns
+- Product Insights: Product improvement opportunities
+- Executive Summary: High-level overview
+
+**Generation Process**:
+1. Parallel generation of all insight types
+2. Groq API integration for AI analysis
+3. Structured output formatting
+4. Quality validation
+
+**Configuration**:
+```yaml
+insight_generation:
+  insight_types:
+    - pain_points
+    - theme_clusters
+    - user_segments
+    - product_insights
+    - executive_summary
+  groq_api_key: "${GROQ_API_KEY}"
+```
+
+**Output Statistics**:
+```python
+{
+    "status": "completed",
+    "total_insights": 25,
+    "types_processed": 5,
+    "insight_stats": {
+        "pain_points": {"status": "success", "insights_generated": 5},
+        "theme_clusters": {"status": "success", "insights_generated": 5},
+        "user_segments": {"status": "success", "insights_generated": 5},
+        "product_insights": {"status": "success", "insights_generated": 5},
+        "executive_summary": {"status": "success", "insights_generated": 5}
+    },
+    "execution_time_seconds": 15.3
+}
+```
+
+#### 6.4 FrontendUpdater
+
+**Function**: Updates frontend components with latest data and insights
+
+**Update Components**:
+- Insights Page: Latest review insights
+- Recommendations Page: Fresh recommendations
+- History Page: Updated user history
+- Cache Clear: Invalidate stale data
+
+**Update Process**:
+1. Parallel component updates
+2. API calls to frontend endpoints
+3. Cache invalidation
+4. Error handling per component
+
+**Configuration**:
+```yaml
+frontend_update:
+  frontend_url: "http://localhost:3000"
+  api_url: "http://localhost:8005"
+  update_timeout: 30
+```
+
+**Output Statistics**:
+```python
+{
+    "status": "completed",
+    "components_updated": 4,
+    "update_stats": {
+        "insights_page": {"status": "success", "records_updated": 10},
+        "recommendations_page": {"status": "success", "records_updated": 15},
+        "history_page": {"status": "success", "records_updated": 5},
+        "cache_clear": {"status": "success", "cache_cleared": true}
+    },
+    "execution_time_seconds": 1.2
+}
+```
+
+#### 6.5 WorkflowExecutor
+
+**Function**: Executes complete workflow across all phases
+
+**Workflow Steps**:
+1. Sync Phase 1 (Conversation Engine)
+2. Sync Phase 2 (Recommendation Engine)
+3. Sync Phase 3 (Orchestration Layer)
+4. Sync Phase 4 (Backend API)
+5. Validate all phase health
+6. Generate execution report
+
+**Configuration**:
+```yaml
+workflow:
+  phase1_url: "http://localhost:8001"
+  phase2_url: "http://localhost:8002"
+  phase3_url: "http://localhost:8003"
+  phase4_url: "http://localhost:8005"
+```
+
+#### 6.6 SchedulerLogger
+
+**Function**: Logs all scheduler execution details
+
+**Log Events**:
+- Workflow start/completion/failure
+- Step completion with statistics
+- Error details and stack traces
+- Execution timing metrics
+
+**Log Storage**:
+- File-based logging (JSON format)
+- Rotatable log files
+- Configurable log directory
+- Queryable history
+
+**Configuration**:
+```yaml
+logging:
+  log_dir: "./logs/scheduler"
+  log_level: "INFO"
+  log_format: "json"
+```
+
+**Log Entry Format**:
+```json
+{
+    "event": "workflow_start",
+    "job_id": "workflow_20260705_100000",
+    "timestamp": "2026-07-05T10:00:00.000000"
+}
+```
+
+### Weekly Workflow Execution
+
+**Complete Workflow Pipeline**:
+```python
+async def execute_weekly_workflow():
+    # Step 1: Download latest reviews
+    review_stats = await review_downloader.download_latest_reviews()
+    
+    # Step 2: Generate insights
+    insight_stats = await insight_generator.generate_insights()
+    
+    # Step 3: Update frontend
+    frontend_stats = await frontend_updater.update_frontend()
+    
+    # Step 4: Execute complete workflow
+    workflow_stats = await workflow_executor.execute_workflow()
+    
+    # Log all results
+    await scheduler_logger.log_workflow_completion(job_id, {
+        "download_reviews": review_stats,
+        "generate_insights": insight_stats,
+        "update_frontend": frontend_stats,
+        "execute_workflow": workflow_stats
+    })
+```
+
+### Execution Schedule
+
+**Schedule**: Every Monday at 10:00 AM IST (Asia/Kolkata timezone)
+
+**Trigger**: CronTrigger with APScheduler
+
+**Configuration**:
+```python
+CronTrigger(
+    day_of_week='mon',
+    hour=10,
+    minute=0,
+    timezone=pytz.timezone('Asia/Kolkata')
+)
+```
+
+**Next Run Time**: Available via `scheduler.get_next_run_time()`
+
+### Manual Execution
+
+**For Testing or On-Demand Runs**:
+```bash
+# Run manual workflow
+python main.py manual
+```
+
+**Programmatic Trigger**:
+```python
+await scheduler.execute_manual_workflow()
+```
+
+### Error Handling
+
+**Individual Step Failures**:
+- Logged but don't stop workflow
+- Other steps continue execution
+- Final status includes all step results
+
+**Workflow Failures**:
+- Logged with error details
+- Can be retried manually
+- Graceful degradation
+
+**Misfire Handling**:
+- 1 hour grace time for delayed executions
+- Coalescing prevents duplicate runs
+- Automatic recovery
+
+### Performance
+
+**Execution Time**:
+- Mock Mode: ~5-10 seconds
+- Production Mode: ~2-5 minutes (depends on API calls)
+
+**Parallel Execution**:
+- Review downloads: Parallel across sources
+- Insight generation: Parallel across types
+- Frontend updates: Parallel across components
+- Phase syncs: Parallel across phases
+
+**Resource Usage**:
+- Minimal CPU during idle time
+- Burst usage during execution
+- Memory: ~100-200 MB
+
+### Monitoring
+
+**Status Check**:
+```python
+scheduler.get_job_status()
+```
+
+**Next Run Time**:
+```python
+scheduler.get_next_run_time()
+```
+
+**Log Monitoring**:
+- Console output for real-time status
+- File logs for detailed history
+- JSON format for easy parsing
+
+### Phase Independence
+
+Phase 6 is completely independent:
+- **Separate Codebase**: Own directory structure
+- **Independent Deployment**: Can run as standalone service
+- **Own Configuration**: Separate config.yaml
+- **Own Dependencies**: Separate requirements.txt
+- **Mock Implementations**: All components have mocks
+- **Isolated Testing**: Can test without other phases
+- **Clear Interfaces**: Well-defined component APIs
+
+**Dependencies on Other Phases**:
+- Optional: Can run without other phases
+- Graceful degradation: Works if phases are unavailable
+- No direct code dependencies: Uses HTTP APIs
+- Can be deployed independently
+
+---
+
 ## Future Enhancements
 
 ### Phase 7: Deployment
