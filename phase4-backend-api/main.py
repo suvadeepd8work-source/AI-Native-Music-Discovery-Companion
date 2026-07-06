@@ -494,9 +494,10 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                     
                     # Generate rich metadata based on track info and user preferences
                     track_mood = request.mood or "Unknown"
-                    track_energy = min(10, max(1, int(track.get("listeners", 50) / 1000))) if track.get("listeners") else 5
+                    listeners = int(track.get("listeners", 50)) if track.get("listeners") else 50
+                    track_energy = min(10, max(1, int(listeners / 1000)))
                     track_context = request.activity or "General listening"
-                    track_listener_sentiment = "Positive" if track.get("listeners", 0) > 10000 else "Growing"
+                    track_listener_sentiment = "Positive" if listeners > 10000 else "Growing"
                     track_genre = request.genres[0] if request.genres and len(request.genres) > 0 else "Mixed"
                     track_similar_artists = [track.get("artist", "Unknown Artist")]
                     
