@@ -218,7 +218,7 @@ export function AIChatInterface({ onRecommendationsReceived }: AIChatInterfacePr
                     <span>Found {message.recommendations.total_count} songs via {message.recommendations.strategies_used.join(" + ")}</span>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {message.recommendations.recommendations.slice(0, 4).map((rec, index) => (
+                    {message.recommendations.recommendations.map((rec, index) => (
                       <RecommendationCard
                         key={index}
                         track={rec.track}
