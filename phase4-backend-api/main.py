@@ -438,7 +438,7 @@ async def discover_music(request: schemas.DiscoverMusicRequest):
                 except Exception as review_error:
                     logger.error(f"Review Engine integration failed: {review_error}", exc_info=True)
                 
-                for track in tracks[:request.limit]:
+                for index, track in enumerate(tracks[:request.limit]):
                     logger.info(f"Processing track: {track.get('name', 'Unknown')}")
                     
                     # Get detailed track info for duration and album name
