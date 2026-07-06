@@ -225,6 +225,7 @@ export function AIChatInterface({ onRecommendationsReceived }: AIChatInterfacePr
                         confidence={rec.confidence}
                         explanation={rec.explanation}
                         community_reviews={rec.community_reviews}
+                        review_insights={rec.review_insights}
                         onPlay={() => console.log("Play:", rec.track.name)}
                         onSave={() => console.log("Save:", rec.track.name)}
                       />

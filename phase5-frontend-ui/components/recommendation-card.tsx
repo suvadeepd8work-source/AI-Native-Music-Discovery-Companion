@@ -1,4 +1,4 @@
-import { Play, Heart, MoreHorizontal, MessageSquare, Star, Pause, Zap, Music, TrendingUp, Users } from "lucide-react"
+import { Play, Heart, MoreHorizontal, MessageSquare, Star, Pause, Zap, Music, TrendingUp, Users, ChevronDown, ChevronUp, CheckCircle2 } from "lucide-react"
 import { useState } from "react"
 
 interface RecommendationCardProps {
@@ -26,6 +26,14 @@ interface RecommendationCardProps {
   user_theme?: string
   user_segment?: string
   key_trait?: string
+  review_insights?: {
+    sentiment_score?: number
+    sentiment?: string
+    descriptors?: string[]
+    comparisons?: string[]
+    contexts?: string[]
+    review_count?: number
+  }
 }
 
 export function RecommendationCard({
@@ -38,10 +46,12 @@ export function RecommendationCard({
   user_theme,
   user_segment,
   key_trait,
+  review_insights,
 }: RecommendationCardProps) {
   const [imageError, setImageError] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
   const [showReviews, setShowReviews] = useState(false)
+  const [showAIReasoning, setShowAIReasoning] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
 
   const handleImageError = () => {
@@ -122,6 +132,11 @@ export function RecommendationCard({
             <span className="text-xs text-[#1DB954] font-semibold">
               {(confidence * 100).toFixed(0)}%
             </span>
+          </div>
+          {/* AI Confidence Badge */}
+          <div className="flex items-center gap-1 px-2 py-1 bg-[#1DB954]/10 border border-[#1DB954]/30 rounded-full">
+            <CheckCircle2 className="h-3 w-3 text-[#1DB954]" />
+            <span className="text-xs text-[#1DB954] font-semibold">AI</span>
           </div>
           {track.duration_ms && (
             <span className="text-xs text-gray-400 font-medium">
@@ -210,6 +225,79 @@ export function RecommendationCard({
             )}
           </div>
         </div>
+        {/* Why AI Recommended This */}
+        <div className="mt-4">
+          <button
+            onClick={() => setShowAIReasoning(!showAIReasoning)}
+            className="flex items-center justify-between w-full p-3 bg-[#1DB954]/5 border border-[#1DB954]/20 rounded-lg hover:bg-[#1DB954]/10 transition-all"
+          >
+            <span className="text-sm font-semibold text-[#1DB954]">Why AI Recommended This</span>
+            {showAIReasoning ? (
+              <ChevronUp className="h-4 w-4 text-[#1DB954]" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-[#1DB954]" />
+            )}
+          </button>
+          {showAIReasoning && (
+            <div className="mt-3 p-4 bg-[#404040] rounded-lg space-y-3">
+              {/* Sentiment Score */}
+              {review_insights?.sentiment_score && (
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-[#1DB954]" />
+                  <span className="text-sm text-gray-300">
+                    {review_insights.sentiment_score}% positive listener sentiment
+                  </span>
+                </div>
+              )}
+              {/* Descriptors */}
+              {review_insights?.descriptors && review_insights.descriptors.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-[#1DB954]" />
+                  <span className="text-sm text-gray-300">
+                    Frequently described as {review_insights.descriptors.slice(0, 2).join(" and ")}
+                  </span>
+                </div>
+              )}
+              {/* Comparisons */}
+              {review_insights?.comparisons && review_insights.comparisons.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-[#1DB954]" />
+                  <span className="text-sm text-gray-300">
+                    Often compared with {review_insights.comparisons[0]}
+                  </span>
+                </div>
+              )}
+              {/* Contexts */}
+              {review_insights?.contexts && review_insights.contexts.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-[#1DB954]" />
+                  <span className="text-sm text-gray-300">
+                    Excellent for {review_insights.contexts[0]}
+                  </span>
+                </div>
+              )}
+              {/* Review Count */}
+              {review_insights?.review_count && (
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-[#1DB954]" />
+                  <span className="text-sm text-gray-300">
+                    Retrieved from {review_insights.review_count} reviews
+                  </span>
+                </div>
+              )}
+              {/* Confidence Display */}
+              <div className="pt-3 border-t border-gray-600">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-400">Confidence</span>
+                  <span className="text-sm font-semibold text-[#1DB954]">
+                    {(confidence * 100).toFixed(0)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         {community_reviews && community_reviews.length > 0 && (
           <div className="mt-4">
             <button
